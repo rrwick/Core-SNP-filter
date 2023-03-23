@@ -12,7 +12,8 @@
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::path::{Path, PathBuf};
-
+use seq_io::fasta::{Reader};
+use flate2::read::GzDecoder;
 
 pub fn check_if_file_exists(filename: &PathBuf) {
     if !Path::new(filename).exists() {
@@ -50,4 +51,30 @@ pub fn is_file_gzipped(filename: &PathBuf) -> bool {
     }
 
     buf[0] == 31 && buf[1] == 139
+}
+
+
+/// Returns an iterator over a FASTA file - works with either uncompressed or gzipped FASTAs.
+pub fn open_fasta_file(filename: &PathBuf) -> Reader<Box<dyn std::io::Read>> {
+    check_if_file_exists(filename);
+    let file = match File::open(filename) {
+        Ok(file) => file,
+        Err(error) => panic!("There was a problem opening the file: {:?}", error),
+    };
+    let reader: Box<dyn Read> = match is_file_gzipped(filename) {
+        true => Box::new(GzDecoder::new(file)),
+        _ => Box::new(file),
+    };
+    Reader::new(reader)
+}
+
+
+pub fn get_first_fasta_seq_length(filename: &PathBuf) -> usize {
+    let mut fasta_reader = open_fasta_file(filename);
+    while let Some(record) = fasta_reader.next() {
+        let record = record.expect("Error reading record");
+        return record.full_seq().len();
+    }
+    quit_with_error("no sequences in input file");
+    return 0;
 }

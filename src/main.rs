@@ -12,11 +12,8 @@
 mod misc;
 
 use std::path::PathBuf;
-use std::fs::File;
-use std::io::prelude::*;
 use clap::{Parser, crate_version, crate_description};
-use seq_io::fasta::{Reader, Record, RefRecord};
-use flate2::read::GzDecoder;
+use seq_io::fasta::{Record, RefRecord};
 use bitvec::prelude::*;
 
 
@@ -45,7 +42,7 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    let alignment_length = get_first_seq_length(&cli.input);
+    let alignment_length = misc::get_first_fasta_seq_length(&cli.input);
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&cli.input, alignment_length);
 
     let mut keep = bitvec![1; alignment_length];
@@ -61,13 +58,25 @@ fn main() {
         }
     }
 
-    let mut fasta_reader = open_fasta_file(&cli.input);
+    let mut fasta_reader = misc::open_fasta_file(&cli.input);
     while let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
         let header = get_fasta_header(&record);
-        let seq = String::from("ACGT");  // TEMP
+        let seq = remove_columns(&record, &keep);
         println!(">{}\n{}", header, seq);
     }
+}
+
+
+fn remove_columns(record: &RefRecord, keep: &BitVec) -> String {
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+    String::from("ACGT")  // TEMP
 }
 
 
@@ -119,7 +128,7 @@ fn bitvectors_and_counts(filename: &PathBuf, alignment_length: usize) -> (BitVec
     let mut seq_count = 0;
     let mut acgt_counts = vec![0; alignment_length];
 
-    let mut fasta_reader = open_fasta_file(filename);
+    let mut fasta_reader = misc::open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
         let seq = record.full_seq();
@@ -138,32 +147,6 @@ fn bitvectors_and_counts(filename: &PathBuf, alignment_length: usize) -> (BitVec
         }
     }
     (a, c, g, t, seq_count, acgt_counts)
-}
-
-
-fn get_first_seq_length(filename: &PathBuf) -> usize {
-    let mut fasta_reader = open_fasta_file(filename);
-    while let Some(record) = fasta_reader.next() {
-        let record = record.expect("Error reading record");
-        return record.full_seq().len();
-    }
-    misc::quit_with_error("no sequences in input file");
-    return 0;
-}
-
-
-/// Returns an iterator over a FASTA file - works with either uncompressed or gzipped FASTAs.
-fn open_fasta_file(filename: &PathBuf) -> Reader<Box<dyn std::io::Read>> {
-    misc::check_if_file_exists(filename);
-    let file = match File::open(filename) {
-        Ok(file) => file,
-        Err(error) => panic!("There was a problem opening the file: {:?}", error),
-    };
-    let reader: Box<dyn Read> = match misc::is_file_gzipped(filename) {
-        true => Box::new(GzDecoder::new(file)),
-        _ => Box::new(file),
-    };
-    Reader::new(reader)
 }
 
 
