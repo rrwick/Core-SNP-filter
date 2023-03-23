@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
 use clap::{Parser, crate_version, crate_description};
-use seq_io::fasta::Reader;
+use seq_io::fasta::{Reader, Record, RefRecord};
 use flate2::read::GzDecoder;
 use bitvec::prelude::*;
 
@@ -61,7 +61,24 @@ fn main() {
         }
     }
 
-    // TODO: read through the input file again and output only kept columns
+    let mut fasta_reader = open_fasta_file(&cli.input);
+    while let Some(record) = fasta_reader.next() {
+        let record = record.expect("Error reading record");
+        let header = get_fasta_header(&record);
+        let seq = String::from("ACGT");  // TEMP
+        println!(">{}\n{}", header, seq);
+    }
+}
+
+
+fn get_fasta_header(record: &RefRecord) -> String {
+    let mut header = String::new();
+    header += record.id().unwrap();
+    match record.desc() {
+        Some(x) => header += &format!(" {}", x.unwrap())[..],
+        _       => (),
+    }
+    return header
 }
 
 
@@ -88,8 +105,6 @@ fn print_verbose_line(i: usize, a: bool, c: bool, g: bool, t: bool, acgt_counts:
                       variation: bool, frac: f64, keep: bool) {
     eprintln!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\t{}", i, a as i32, c as i32, g as i32, t as i32,
               acgt_counts, variation as i32, frac, keep as i32);}
-
-
 
 
 /// Returns:
@@ -150,7 +165,6 @@ fn open_fasta_file(filename: &PathBuf) -> Reader<Box<dyn std::io::Read>> {
     };
     Reader::new(reader)
 }
-
 
 
 #[cfg(test)]
