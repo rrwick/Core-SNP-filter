@@ -12,13 +12,12 @@
 mod misc;
 
 use std::path::PathBuf;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use clap::{Parser, crate_version, crate_description};
 use seq_io::fasta::{Reader,Record};
-
 use flate2::read::GzDecoder;
+use bit_vec::BitVec;
 
 
 #[derive(Parser)]
@@ -42,30 +41,55 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    let mut fasta_reader = open_fasta_file(&cli.input);
-    let mut alignment_length = 0;
-    let mut first_record = true;
+    let alignment_length = get_first_seq_length(&cli.input);
+    eprintln!("alignment length: {}", alignment_length);
+    let (a, c, g, t) = base_bitvectors(&cli.input, alignment_length);
 
+}
+
+
+/// Returns a bitvector for each of the four canonical bases for each position of the alignment.
+fn base_bitvectors(filename: &PathBuf, alignment_length: usize) -> (BitVec, BitVec, BitVec, BitVec){
+    let mut a = BitVec::from_elem(alignment_length, false);
+    let mut c = BitVec::from_elem(alignment_length, false);
+    let mut g = BitVec::from_elem(alignment_length, false);
+    let mut t = BitVec::from_elem(alignment_length, false);
+
+    let mut fasta_reader = open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
         let name = record.id().unwrap();
         let seq = record.full_seq();
-
-        if first_record {
-            alignment_length = seq.len();
-            first_record = false;
-        } else if alignment_length != seq.len() {
+        if alignment_length != seq.len() {
             misc::quit_with_error("all sequences must be equal length");
         }
-
-
-
-
-
-
-
+        for i in 0..alignment_length {
+            match seq[i] {
+                65 =>  a.set(i, true),
+                97 =>  a.set(i, true),
+                67 =>  c.set(i, true),
+                99 =>  c.set(i, true),
+                71 =>  g.set(i, true),
+                103 => g.set(i, true),
+                64 =>  t.set(i, true),
+                116 => t.set(i, true),
+                _ => (),
+            }
+        }
         eprintln!("{} {}", name, seq.len());
     }
+    (a, c, g, t)
+}
+
+
+fn get_first_seq_length(filename: &PathBuf) -> usize {
+    let mut fasta_reader = open_fasta_file(filename);
+    while let Some(record) = fasta_reader.next() {
+        let record = record.expect("Error reading record");
+        return record.full_seq().len();
+    }
+    misc::quit_with_error("no sequences in input file");
+    return 0;
 }
 
 
