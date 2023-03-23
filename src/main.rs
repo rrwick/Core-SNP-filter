@@ -18,6 +18,7 @@ use clap::{Parser, crate_version, crate_description};
 use seq_io::fasta::{Reader,Record};
 use flate2::read::GzDecoder;
 use bit_vec::BitVec;
+use tempfile::tempdir;
 
 
 #[derive(Parser)]
@@ -65,14 +66,10 @@ fn base_bitvectors(filename: &PathBuf, alignment_length: usize) -> (BitVec, BitV
         }
         for i in 0..alignment_length {
             match seq[i] {
-                65 =>  a.set(i, true),
-                97 =>  a.set(i, true),
-                67 =>  c.set(i, true),
-                99 =>  c.set(i, true),
-                71 =>  g.set(i, true),
-                103 => g.set(i, true),
-                64 =>  t.set(i, true),
-                116 => t.set(i, true),
+                65 | 97 =>  a.set(i, true),
+                67 | 99 =>  c.set(i, true),
+                71 | 103 => g.set(i, true),
+                84 | 116 => t.set(i, true),
                 _ => (),
             }
         }
@@ -105,4 +102,27 @@ fn open_fasta_file(filename: &PathBuf) -> Reader<Box<dyn std::io::Read>> {
         _ => Box::new(file),
     };
     Reader::new(reader)
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_base_bitvectors() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.fasta");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, ">seq_1\nACGATCAGCATCAGC").unwrap();
+        writeln!(file, ">seq_2\nGGTCAGCTCAGCATC").unwrap();
+        drop(file);
+        let alignment_length = get_first_seq_length(&file_path);
+        assert_eq!(alignment_length, 15);
+        let (a, c, g, t) = base_bitvectors(&file_path, alignment_length);
+        println!("{:?} {:?} {:?} {:?}", a, c, g, t);
+        assert_eq!(1, 2);
+    }
+
 }
