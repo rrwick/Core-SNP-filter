@@ -17,7 +17,7 @@ use std::io::prelude::*;
 use clap::{Parser, crate_version, crate_description};
 use seq_io::fasta::{Reader,Record};
 use flate2::read::GzDecoder;
-use bit_vec::BitVec;
+use bitvec::prelude::*;
 use tempfile::tempdir;
 
 
@@ -51,10 +51,10 @@ fn main() {
 
 /// Returns a bitvector for each of the four canonical bases for each position of the alignment.
 fn base_bitvectors(filename: &PathBuf, alignment_length: usize) -> (BitVec, BitVec, BitVec, BitVec){
-    let mut a = BitVec::from_elem(alignment_length, false);
-    let mut c = BitVec::from_elem(alignment_length, false);
-    let mut g = BitVec::from_elem(alignment_length, false);
-    let mut t = BitVec::from_elem(alignment_length, false);
+    let mut a = bitvec![0; alignment_length];
+    let mut c = bitvec![0; alignment_length];
+    let mut g = bitvec![0; alignment_length];
+    let mut t = bitvec![0; alignment_length];
 
     let mut fasta_reader = open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
@@ -111,18 +111,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_base_bitvectors() {
+    fn test_base_bitvectors_1() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.fasta");
         let mut file = File::create(&file_path).unwrap();
-        writeln!(file, ">seq_1\nACGATCAGCATCAGC").unwrap();
-        writeln!(file, ">seq_2\nGGTCAGCTCAGCATC").unwrap();
+        writeln!(file, ">seq_1\nACGAT").unwrap();
+        writeln!(file, ">seq_2\nGGTCA").unwrap();
         drop(file);
         let alignment_length = get_first_seq_length(&file_path);
-        assert_eq!(alignment_length, 15);
+        assert_eq!(alignment_length, 5);
         let (a, c, g, t) = base_bitvectors(&file_path, alignment_length);
         println!("{:?} {:?} {:?} {:?}", a, c, g, t);
-        assert_eq!(1, 2);
+        assert_eq!(a, bitvec![1, 0, 0, 1, 1]);
+        assert_eq!(c, bitvec![0, 1, 0, 1, 0]);
+        assert_eq!(g, bitvec![1, 1, 1, 0, 0]);
+        assert_eq!(t, bitvec![0, 0, 1, 0, 1]);
+    }
+
+    #[test]
+    fn test_base_bitvectors_2() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.fasta");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, ">seq_1\naacgacta").unwrap();
+        writeln!(file, ">seq_2\nAGCTACGA").unwrap();
+        writeln!(file, ">seq_3\nacgGCTca").unwrap();
+        drop(file);
+        let alignment_length = get_first_seq_length(&file_path);
+        assert_eq!(alignment_length, 8);
+        let (a, c, g, t) = base_bitvectors(&file_path, alignment_length);
+        println!("{:?} {:?} {:?} {:?}", a, c, g, t);
+        assert_eq!(a, bitvec![1, 1, 0, 0, 1, 0, 0, 1]);
+        assert_eq!(c, bitvec![0, 1, 1, 0, 1, 1, 1, 0]);
+        assert_eq!(g, bitvec![0, 1, 1, 1, 0, 0, 1, 0]);
+        assert_eq!(t, bitvec![0, 0, 0, 1, 0, 1, 1, 0]);
     }
 
 }
