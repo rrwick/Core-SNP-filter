@@ -43,7 +43,9 @@ fn main() {
     let cli = Cli::parse();
 
     let alignment_length = misc::get_first_fasta_seq_length(&cli.input);
+    eprintln!("alignment length:    {}", alignment_length);
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&cli.input, alignment_length);
+    eprintln!("number of sequences: {}", seq_count);
 
     let mut keep = bitvec![1; alignment_length];
     if cli.verbose {
@@ -57,26 +59,33 @@ fn main() {
             print_verbose_line(i, a[i], c[i], g[i], t[i], acgt_counts[i], variation, frac, keep[i]);
         }
     }
+    let output_size = keep.iter().filter(|n| *n == true).count();
+    eprintln!("columns to keep:     {}", output_size);
 
     let mut fasta_reader = misc::open_fasta_file(&cli.input);
     while let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
-        let header = get_fasta_header(&record);
-        let seq = remove_columns(&record, &keep);
-        println!(">{}\n{}", header, seq);
+        output_sequence(&record, &keep, output_size);
     }
 }
 
+fn output_sequence(record: &RefRecord, keep: &BitVec, output_size: usize) {
+    let header = get_fasta_header(&record);
+    let seq = remove_columns(&record, &keep, output_size);
+    println!(">{}\n{}", header, seq);
+}
 
-fn remove_columns(record: &RefRecord, keep: &BitVec) -> String {
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    String::from("ACGT")  // TEMP
+
+fn remove_columns(record: &RefRecord, keep: &BitVec, output_size: usize) -> String {
+    let full_seq = record.full_seq();
+    let mut kept_seq = String::with_capacity(output_size);
+    for i in 0..full_seq.len() {
+        if keep[i] {
+            kept_seq.push(full_seq[i] as char)
+        }
+    }
+    assert!(kept_seq.len() == output_size);
+    kept_seq
 }
 
 
@@ -106,6 +115,7 @@ fn has_variation(a: bool, c: bool, g: bool, t: bool) -> bool {
 
 
 fn print_verbose_header() {
+    eprintln!();
     eprintln!("pos\ta\tc\tg\tt\tcount\tvar\tfrac\tkeep");
 }
 
