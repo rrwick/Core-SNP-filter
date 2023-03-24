@@ -24,7 +24,6 @@ pub fn check_if_file_exists(filename: &PathBuf) {
 
 
 pub fn quit_with_error(text: &str) {
-    eprintln!();
     eprintln!("Error: {}", text);
     std::process::exit(1);
 }

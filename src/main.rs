@@ -41,6 +41,7 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
+    check_cli_arguments(&cli);
 
     let alignment_length = misc::get_first_fasta_seq_length(&cli.input);
     eprintln!("alignment length:    {}", alignment_length);
@@ -68,6 +69,14 @@ fn main() {
         output_sequence(&record, &keep, output_size);
     }
 }
+
+
+fn check_cli_arguments(cli: &Cli) {
+    if cli.core < 0.0 || cli.core > 1.0 {
+        misc::quit_with_error("--core must be between 0 and 1 (inclusive)")
+    }
+}
+
 
 fn output_sequence(record: &RefRecord, keep: &BitVec, output_size: usize) {
     let header = get_fasta_header(&record);
