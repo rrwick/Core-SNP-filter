@@ -1,9 +1,9 @@
 [package]
-name = "dropcolumns"
+name = "coresnpfilter"
 version = "0.0.0"
 authors = ["Ryan Wick <rrwick@gmail.com>"]
 edition = "2018"
-description = "a tool for dropping columns in a FASTA-format whole-genome pseudo-alignment"
+description = "Core-SNP-filter"
 rust-version = "1.66"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
