@@ -11,10 +11,11 @@
 
 mod misc;
 
-use std::path::PathBuf;
+use bitvec::prelude::*;
 use clap::{Parser, crate_version, crate_description};
 use seq_io::fasta::{Record, RefRecord};
-use bitvec::prelude::*;
+use std::io;
+use std::path::PathBuf;
 
 
 #[derive(Parser)]
@@ -41,13 +42,15 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
-    check_cli_arguments(&cli);
-    drop_columns(&cli.input, cli.exclude_invariant, cli.core, cli.verbose);
+    check_arguments(cli.core);
+    drop_columns(&cli.input, cli.exclude_invariant, cli.core, cli.verbose, &mut io::stdout());
 }
 
 
-/// This is the main function of the program (I factored it out of 'main' for easier testing).
-fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose: bool) {
+/// This is the primary function of the program. For easier testing, I factored it out of the main
+/// function and use the stdout argument to allow for capturing the output.
+fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose: bool,
+                stdout: &mut dyn io::Write) {
     let alignment_length = misc::get_first_fasta_seq_length(filename);
     eprintln!("alignment length:    {}", alignment_length);
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
@@ -71,22 +74,23 @@ fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose:
     let mut fasta_reader = misc::open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
-        output_sequence(&record, &keep, output_size);
+        output_sequence(&record, &keep, output_size, stdout);
     }
 }
 
 
-fn check_cli_arguments(cli: &Cli) {
-    if cli.core < 0.0 || cli.core > 1.0 {
-        misc::quit_with_error("--core must be between 0 and 1 (inclusive)")
+fn check_arguments(core: f64) {
+    if core < 0.0 || core > 1.0 {
+        panic!("--core must be between 0 and 1 (inclusive)")
     }
 }
 
 
-fn output_sequence(record: &RefRecord, keep: &BitVec, output_size: usize) {
+fn output_sequence(record: &RefRecord, keep: &BitVec, output_size: usize,
+                   stdout: &mut dyn io::Write) {
     let header = get_fasta_header(&record);
     let seq = remove_columns(&record, &keep, output_size);
-    println!(">{}\n{}", header, seq);
+    writeln!(stdout, ">{}\n{}", header, seq).unwrap();
 }
 
 
@@ -157,7 +161,7 @@ fn bitvectors_and_counts(filename: &PathBuf, alignment_length: usize) -> (BitVec
         let record = record.expect("Error reading record");
         let seq = record.full_seq();
         if alignment_length != seq.len() {
-            misc::quit_with_error("all sequences must be equal length");
+            panic!("all sequences must be equal length");
         }
         seq_count += 1;
         for i in 0..alignment_length {
@@ -178,8 +182,36 @@ fn bitvectors_and_counts(filename: &PathBuf, alignment_length: usize) -> (BitVec
 mod tests {
     use std::fs::File;
     use std::io::Write;
-    use tempfile::tempdir;
+    use std::str::from_utf8;
+    use tempfile::{TempDir,tempdir};
     use super::*;
+
+    fn make_test_file(contents: &str) -> (PathBuf, TempDir) {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.fasta");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", contents).unwrap();
+        (file_path, dir)
+    }
+
+    #[test]
+    fn test_check_arguments_1() {
+        check_arguments(0.0);
+        check_arguments(0.5);
+        check_arguments(1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_check_arguments_2() {
+        check_arguments(-0.1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_check_arguments_3() {
+        check_arguments(1.1);
+    }
 
     #[test]
     fn test_keep_column() {
@@ -211,13 +243,9 @@ mod tests {
 
     #[test]
     fn test_bitvectors_and_counts_1() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.fasta");
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, ">seq_1\nACGAT").unwrap();
-        writeln!(file, ">seq_2\nGGT-A").unwrap();
-        drop(file);
-        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&file_path, 5);
+        let (path, _dir) = make_test_file(">seq_1\nACGAT\n\
+                                           >seq_2\nGGT-A\n");
+        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&path, 5);
         assert_eq!(a, bitvec![1, 0, 0, 1, 1]);
         assert_eq!(c, bitvec![0, 1, 0, 0, 0]);
         assert_eq!(g, bitvec![1, 1, 1, 0, 0]);
@@ -228,19 +256,169 @@ mod tests {
 
     #[test]
     fn test_bitvectors_and_counts_2() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.fasta");
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, ">seq_1\naacgacta").unwrap();
-        writeln!(file, ">seq_2\nAGCNACGA").unwrap();
-        writeln!(file, ">seq_3\nacgGCTca").unwrap();
-        drop(file);
-        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&file_path, 8);
+        let (path, _dir) = make_test_file(">seq_1\naacgacta\n\
+                                           >seq_2\nAGCNACGA\n\
+                                           >seq_3\nacgGCTca\n");
+        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&path, 8);
         assert_eq!(a, bitvec![1, 1, 0, 0, 1, 0, 0, 1]);
         assert_eq!(c, bitvec![0, 1, 1, 0, 1, 1, 1, 0]);
         assert_eq!(g, bitvec![0, 1, 1, 1, 0, 0, 1, 0]);
         assert_eq!(t, bitvec![0, 0, 0, 0, 0, 1, 1, 0]);
         assert_eq!(seq_count, 3);
         assert_eq!(acgt_counts, vec![3, 3, 3, 2, 3, 3, 3, 3]);
+    }
+
+    #[test]
+    fn test_drop_columns_1() {
+        // No filtering - input is the same as the output.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
+                                                 >seq_2\nACCATTAG\n\
+                                                 >seq_3\nACGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, false, 0.0, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACGATCAG\n\
+                                                 >seq_2\nACCATTAG\n\
+                                                 >seq_3\nACGATCAG\n");
+    }
+
+    #[test]
+    fn test_drop_columns_2() {
+        // Dropping invariant sites.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
+                                                 >seq_2\nACCATTAG\n\
+                                                 >seq_3\nACGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.0, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nGC\n\
+                                                 >seq_2\nCT\n\
+                                                 >seq_3\nGC\n");
+    }
+
+    #[test]
+    fn test_drop_columns_3() {
+        // At 60% core, 2 out of 3 sequences is enough.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
+                                                 >seq_2\nAC----CG\n\
+                                                 >seq_3\nAGGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, false, 0.6, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACGATCAG\n\
+                                                 >seq_2\nAC----CG\n\
+                                                 >seq_3\nAGGATCAG\n");
+    }
+
+    #[test]
+    fn test_drop_columns_4() {
+        // At 70% core, 2 out of 3 sequences is not enough.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
+                                                 >seq_2\nAC----CG\n\
+                                                 >seq_3\nAGGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, false, 0.7, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACAG\n\
+                                                 >seq_2\nACCG\n\
+                                                 >seq_3\nAGAG\n");
+    }
+
+    #[test]
+    fn test_drop_columns_5() {
+        // Same as previous but dropping invariant sites and with verbose output.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
+                                                 >seq_2\nAC----CG\n\
+                                                 >seq_3\nAGGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.7, true, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nCA\n\
+                                                 >seq_2\nCC\n\
+                                                 >seq_3\nGA\n");
+    }
+
+    #[test]
+    fn test_drop_columns_6() {
+        // Same as previous but with some descriptions in the FASTA headers.
+        let (path, _dir) =       make_test_file(">seq_1 info\nACGATCAG\n\
+                                                 >seq_2\nAC----CG\n\
+                                                 >seq_3 stuff\nAGGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.7, true, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1 info\nCA\n\
+                                                 >seq_2\nCC\n\
+                                                 >seq_3 stuff\nGA\n");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_drop_columns_7() {
+        // Invalid input with different sequence lengths.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
+                                                 >seq_2\nAC----CGA\n\
+                                                 >seq_3\nAGGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.7, true, &mut stdout);
+    }
+
+    #[test]
+    fn test_drop_columns_8() {
+        // Every column is dropped.
+        let (path, _dir) =       make_test_file(">seq_1\nACGATCA-\n\
+                                                 >seq_2\nAC----AC\n\
+                                                 >seq_3\nACGATCAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.7, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\n\n\
+                                                 >seq_2\n\n\
+                                                 >seq_3\n\n");
+    }
+
+    #[test]
+    fn test_drop_columns_9() {
+        // Using a mixture of uppercase and lowercase - no columns dropped.
+        let (path, _dir) =       make_test_file(">seq_1\nACGAtCaGcAaT\n\
+                                                 >seq_2\nAcGaGCaGcAcT\n\
+                                                 >seq_3\nACGatTAgCaCT\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, false, 0.5, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACGAtCaGcAaT\n\
+                                                 >seq_2\nAcGaGCaGcAcT\n\
+                                                 >seq_3\nACGatTAgCaCT\n");
+    }
+
+    #[test]
+    fn test_drop_columns_10() {
+        // Using a mixture of uppercase and lowercase - invariant columns dropped.
+        let (path, _dir) =       make_test_file(">seq_1\nACGAtCaGcAaT\n\
+                                                 >seq_2\nAcGaGCaGcAcT\n\
+                                                 >seq_3\nACGatTAgCaCT\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.5, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\ntCa\n\
+                                                 >seq_2\nGCc\n\
+                                                 >seq_3\ntTC\n");
+    }
+
+    #[test]
+    fn test_drop_columns_11() {
+        // Using a mixture of uppercase and lowercase - non-core columns dropped.
+        let (path, _dir) =       make_test_file(">seq_1\nACG--CaGcAaT\n\
+                                                 >seq_2\nAcGaGCa--AcT\n\
+                                                 >seq_3\nACGa----CaCT\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, false, 0.5, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACG-CacAaT\n\
+                                                 >seq_2\nAcGaCa-AcT\n\
+                                                 >seq_3\nACGa--CaCT\n");
+    }
+
+    #[test]
+    fn test_drop_columns_12() {
+        // Using a mixture of uppercase and lowercase - invariant and non-core columns dropped.
+        let (path, _dir) =       make_test_file(">seq_1\nACG--CaGcAaT\n\
+                                                 >seq_2\nAcGaGCa--AcT\n\
+                                                 >seq_3\nACGa----CaCT\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.5, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\na\n\
+                                                 >seq_2\nc\n\
+                                                 >seq_3\nC\n");
     }
 }

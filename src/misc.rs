@@ -18,15 +18,8 @@ use flate2::read::GzDecoder;
 
 pub fn check_if_file_exists(filename: &PathBuf) {
     if !Path::new(filename).exists() {
-        let error_message = format!("{:?} file does not exist", filename);
-        quit_with_error(&error_message);
+        panic!("{:?} file does not exist", filename);
     }
-}
-
-
-pub fn quit_with_error(text: &str) {
-    eprintln!("Error: {}", text);
-    std::process::exit(1);
 }
 
 
@@ -37,7 +30,7 @@ pub fn is_file_gzipped(filename: &PathBuf) -> bool {
     let open_result = File::open(&filename);
     match open_result {
         Ok(_)  => (),
-        Err(_) => quit_with_error(&format!("unable to open {:?}", filename)),
+        Err(_) => panic!("unable to open {:?}", filename),
     }
     let file = open_result.unwrap();
 
@@ -47,7 +40,7 @@ pub fn is_file_gzipped(filename: &PathBuf) -> bool {
     let read_result = reader.read_exact(&mut buf);
     match read_result {
         Ok(_)  => (),
-        Err(_) => quit_with_error(&format!("{:?} is too small", filename)),
+        Err(_) => panic!("{:?} is too small", filename),
     }
 
     buf[0] == 31 && buf[1] == 139
@@ -75,8 +68,7 @@ pub fn get_first_fasta_seq_length(filename: &PathBuf) -> usize {
         let record = record.expect("Error reading record");
         return record.full_seq().len();
     }
-    quit_with_error("no sequences in input file");
-    return 0;
+    panic!("no sequences in input file");
 }
 
 
@@ -84,19 +76,55 @@ pub fn get_first_fasta_seq_length(filename: &PathBuf) -> usize {
 mod tests {
     use std::fs::File;
     use std::io::Write;
-    use tempfile::tempdir;
+    use tempfile::{TempDir,tempdir};
     use super::*;
 
-    #[test]
-    fn test_get_first_fasta_seq_length() {
+    fn make_test_file(contents: &str) -> (PathBuf, TempDir) {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.fasta");
         let mut file = File::create(&file_path).unwrap();
-        writeln!(file, ">seq_1\nACGAT").unwrap();
-        writeln!(file, ">seq_2\nGGTA").unwrap();
-        writeln!(file, ">seq_3\nCTCGCATCAG").unwrap();
-        drop(file);
-        let first_seq_len = get_first_fasta_seq_length(&file_path);
+        write!(file, "{}", contents).unwrap();
+        (file_path, dir)
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_check_if_file_exists() {
+        check_if_file_exists(&PathBuf::from("not_a_real_file"));
+    }
+
+    #[test]
+    fn test_is_file_gzipped_1() {
+        let (path, _dir) = make_test_file(">seq_1\nACGAT\n");
+        assert!(!is_file_gzipped(&path));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_is_file_gzipped_2() {
+        let (path, _dir) = make_test_file("");
+        is_file_gzipped(&path);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_is_file_gzipped_3() {
+        is_file_gzipped(&PathBuf::from("not_a_real_file"));
+    }
+
+    #[test]
+    fn test_get_first_fasta_seq_length_1() {
+        let (path, _dir) = make_test_file(">seq_1\nACGAT\n\
+                                           >seq_2\nGGTA\n\
+                                           >seq_3\nCTCGCATCAG\n");
+        let first_seq_len = get_first_fasta_seq_length(&path);
         assert_eq!(first_seq_len, 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_get_first_fasta_seq_length_2() {
+        let (path, _dir) = make_test_file("");
+        get_first_fasta_seq_length(&path);
     }
 }
