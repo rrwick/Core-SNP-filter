@@ -2,9 +2,11 @@
 
 This is a tool to filter sites (i.e. columns) in a FASTA-format whole-genome pseudo-alignment based on:
 * Whether the site contains variation or not.
-* How conserved the site is, i.e. has a base in a sufficient fraction of the sequences.
+* How conserved the site is, i.e. contains an unambiguous base in a sufficient fraction of the sequences.
 
-I wrote this tool because I was using [Snippy](https://github.com/tseemann/snippy), and the `snippy-core` command produces a `core.full.aln` file (contains all sites regardless of variation and conservation) and `core.aln` (only contains invariant sites with 100% conservation). I wanted a tool that could produce a core SNP alignment, but with more flexibility, e.g. including sites with ≥95% conservation.
+I wrote Core-SNP-filter because I was using [Snippy](https://github.com/tseemann/snippy), and the `snippy-core` command produces a `core.full.aln` file (contains all sites regardless of variation and conservation) and `core.aln` (only contains invariant sites with 100% conservation). I wanted a tool that could produce a core SNP alignment, but with more flexibility, e.g. including sites with ≥95% conservation.
+
+Core-SNP-filter is written in Rust, making it pretty fast. On a small input alignment (2 Mbp in length, 100 sequences), it runs in seconds. On a large input alignment (5 Mbp in length, 5000 sequences), it takes less than 10 minutes.
 
 
 
@@ -16,7 +18,7 @@ There are two main options:
 * `-e`/`--exclude_invariant`: if used, all invariant sites in the alignment are removed. A site counts as invariant if the number of unique unambiguous bases (`A`, `C`, `G` or `T`) at that site is one or zero. For example, a site with only `A` is invariant, but a site with both `A` and `C` is not invariant. Gaps and other characters do not count, e.g. a site with only `A`, `N` and `-` is invariant. Case does not matter, e.g. a site with only `A` and `a` is invariant. 
 * `-c`/`--core`: at least this fraction of the sequences must contain an unambiguous base (`A`, `C`, `G` or `T`) at a site for the site to be included. The default is `0.0`, i.e. sites are not filtered based on core fraction. If `1.0` is given, all sites with gaps or other characters will be removed, leaving an alignment containing only unambiguous bases. A more relaxed value of `0.95` will ensure that each site contains mostly unambiguous bases, but up to 5% of the sequences can be gaps or other characters.
 
-`coresnpfilter` outputs a FASTA alignment to stdout. The output will have the same number of sequences as the input, but (depending on the options used) the length of the sequences will likely be shorter. The header lines (names and descriptions) of the output will be the same as the input, and there will be no line breaks in the sequences (each sequence gets one line).
+Core-SNP-filter outputs a FASTA alignment to stdout. The output will have the same number of sequences as the input, but (depending on the options used) the length of the sequences will likely be shorter. The header lines (names and descriptions) of the output will be the same as the input, and there will be no line breaks in the sequences (each sequence gets one line). Some basic information (input file, input sequence length, number of sequences and output sequence length) is printed to stderr.
 
 Some example commands:
 ```bash
@@ -75,6 +77,31 @@ cargo build --release
 ```
 
 You'll find the freshly built executable in `target/release/coresnpfilter`, which you can then move to an appropriate location that's in your `PATH` variable.
+
+
+
+### Verbose output
+
+Using the `--verbose` option will make Core-SNP-filter print a per-site table to stderr. Save it to file like this:
+```bash
+coresnpfilter -e -c 0.95 --verbose core.full.aln 1> filtered.aln 2> core_snp_table.tsv
+```
+
+This is mainly for debugging purposes, so you probably don't want to use it. But if you do, the columns are:
+* `pos`: 1-based index of the input alignment site
+* `a`: whether any sequence at this site contains `A` or `a`
+* `c`: whether any sequence at this site contains `C` or `c`
+* `g`: whether any sequence at this site contains `G` or `g`
+* `t`: whether any sequence at this site contains `T` or `t`
+* `count`: the number of sequences at this site which contain an unambiguous base
+* `frac`: the fraction of sequences at this site which contain an unambiguous base
+* `var`: whether there is any variation at this site (i.e. two or more of the `a`/`c`/`g`/`t` columns are true)
+* `keep`: whether the site passed the filter and is included in the output
+
+Boolean columns use `0` for no and `1` for yes. You can use this table to see which sites in your input alignment have made it into the output alignment:
+```bash
+awk '{if ($9==1) print $1;}' core_snp_table.tsv
+```
 
 
 
