@@ -52,9 +52,13 @@ fn main() {
 fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose: bool,
                 stdout: &mut dyn io::Write) {
     let alignment_length = misc::get_first_fasta_seq_length(filename);
-    eprintln!("alignment length:    {}", alignment_length);
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
-    eprintln!("number of sequences: {}", seq_count);
+    if !verbose {
+        eprintln!("Core-SNP-filter");
+        eprintln!("  input file:             {}", filename.display());
+        eprintln!("  input sequence length:  {}", alignment_length);
+        eprintln!("  number of sequences:    {}", seq_count);
+    }
 
     let mut keep = bitvec![1; alignment_length];
     if verbose {
@@ -69,7 +73,9 @@ fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose:
         }
     }
     let output_size = keep.iter().filter(|n| *n == true).count();
-    eprintln!("columns to keep:     {}", output_size);
+    if !verbose {
+        eprintln!("  output sequence length: {}", output_size);
+    }
 
     let mut fasta_reader = misc::open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
@@ -133,15 +139,14 @@ fn has_variation(a: bool, c: bool, g: bool, t: bool) -> bool {
 
 
 fn print_verbose_header() {
-    eprintln!();
-    eprintln!("pos\ta\tc\tg\tt\tcount\tvar\tfrac\tkeep");
+    eprintln!("pos\ta\tc\tg\tt\tcount\tfrac\tvar\tkeep");
 }
 
 
 fn print_verbose_line(i: usize, a: bool, c: bool, g: bool, t: bool, acgt_counts: usize,
                       variation: bool, frac: f64, keep: bool) {
-    eprintln!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\t{}", i, a as i32, c as i32, g as i32, t as i32,
-              acgt_counts, variation as i32, frac, keep as i32);}
+    eprintln!("{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\t{}\t{}", i+1, a as i32, c as i32, g as i32, t as i32,
+              acgt_counts, frac, variation as i32, keep as i32);}
 
 
 /// Returns:
