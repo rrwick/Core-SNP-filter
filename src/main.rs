@@ -42,28 +42,33 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     check_cli_arguments(&cli);
+    drop_columns(&cli.input, cli.exclude_invariant, cli.core, cli.verbose);
+}
 
-    let alignment_length = misc::get_first_fasta_seq_length(&cli.input);
+
+/// This is the main function of the program (I factored it out of 'main' for easier testing).
+fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose: bool) {
+    let alignment_length = misc::get_first_fasta_seq_length(filename);
     eprintln!("alignment length:    {}", alignment_length);
-    let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&cli.input, alignment_length);
+    let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
     eprintln!("number of sequences: {}", seq_count);
 
     let mut keep = bitvec![1; alignment_length];
-    if cli.verbose {
+    if verbose {
         print_verbose_header();
     }
     for i in 0..alignment_length {
         let variation = has_variation(a[i], c[i], g[i], t[i]);
         let frac = acgt_counts[i] as f64 / seq_count as f64;
-        keep.set(i, keep_column(variation, frac, cli.exclude_invariant, cli.core));
-        if cli.verbose {
+        keep.set(i, keep_column(variation, frac, exclude_invariant, core));
+        if verbose {
             print_verbose_line(i, a[i], c[i], g[i], t[i], acgt_counts[i], variation, frac, keep[i]);
         }
     }
     let output_size = keep.iter().filter(|n| *n == true).count();
     eprintln!("columns to keep:     {}", output_size);
 
-    let mut fasta_reader = misc::open_fasta_file(&cli.input);
+    let mut fasta_reader = misc::open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
         output_sequence(&record, &keep, output_size);
@@ -171,6 +176,8 @@ fn bitvectors_and_counts(filename: &PathBuf, alignment_length: usize) -> (BitVec
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+    use std::io::Write;
     use tempfile::tempdir;
     use super::*;
 
@@ -210,10 +217,7 @@ mod tests {
         writeln!(file, ">seq_1\nACGAT").unwrap();
         writeln!(file, ">seq_2\nGGT-A").unwrap();
         drop(file);
-        let alignment_length = get_first_seq_length(&file_path);
-        assert_eq!(alignment_length, 5);
-        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&file_path, alignment_length);
-        println!("{:?} {:?} {:?} {:?}", a, c, g, t);
+        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&file_path, 5);
         assert_eq!(a, bitvec![1, 0, 0, 1, 1]);
         assert_eq!(c, bitvec![0, 1, 0, 0, 0]);
         assert_eq!(g, bitvec![1, 1, 1, 0, 0]);
@@ -231,17 +235,12 @@ mod tests {
         writeln!(file, ">seq_2\nAGCNACGA").unwrap();
         writeln!(file, ">seq_3\nacgGCTca").unwrap();
         drop(file);
-        let alignment_length = get_first_seq_length(&file_path);
-        assert_eq!(alignment_length, 8);
-        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&file_path, alignment_length);
-        println!("{:?} {:?} {:?} {:?}", a, c, g, t);
+        let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(&file_path, 8);
         assert_eq!(a, bitvec![1, 1, 0, 0, 1, 0, 0, 1]);
         assert_eq!(c, bitvec![0, 1, 1, 0, 1, 1, 1, 0]);
         assert_eq!(g, bitvec![0, 1, 1, 1, 0, 0, 1, 0]);
         assert_eq!(t, bitvec![0, 0, 0, 0, 0, 1, 1, 0]);
         assert_eq!(seq_count, 3);
         assert_eq!(acgt_counts, vec![3, 3, 3, 2, 3, 3, 3, 3]);
-
     }
-
 }

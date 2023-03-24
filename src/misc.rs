@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use seq_io::fasta::{Reader};
 use flate2::read::GzDecoder;
 
+
 pub fn check_if_file_exists(filename: &PathBuf) {
     if !Path::new(filename).exists() {
         let error_message = format!("{:?} file does not exist", filename);
@@ -76,4 +77,26 @@ pub fn get_first_fasta_seq_length(filename: &PathBuf) -> usize {
     }
     quit_with_error("no sequences in input file");
     return 0;
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+    use super::*;
+
+    #[test]
+    fn test_get_first_fasta_seq_length() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.fasta");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, ">seq_1\nACGAT").unwrap();
+        writeln!(file, ">seq_2\nGGTA").unwrap();
+        writeln!(file, ">seq_3\nCTCGCATCAG").unwrap();
+        drop(file);
+        let first_seq_len = get_first_fasta_seq_length(&file_path);
+        assert_eq!(first_seq_len, 5);
+    }
 }
