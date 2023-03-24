@@ -338,12 +338,12 @@ mod tests {
         // Same as previous but with some descriptions in the FASTA headers.
         let (path, _dir) =       make_test_file(">seq_1 info\nACGATCAG\n\
                                                  >seq_2\nAC----CG\n\
-                                                 >seq_3 stuff\nAGGATCAG\n");
+                                                 >seq_3 lots of stuff\nAGGATCAG\n");
         let mut stdout = Vec::new();
         drop_columns(&path, true, 0.7, true, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1 info\nCA\n\
                                                  >seq_2\nCC\n\
-                                                 >seq_3 stuff\nGA\n");
+                                                 >seq_3 lots of stuff\nGA\n");
     }
 
     #[test]
@@ -420,5 +420,18 @@ mod tests {
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\na\n\
                                                  >seq_2\nc\n\
                                                  >seq_3\nC\n");
+    }
+
+    #[test]
+    fn test_drop_columns_13() {
+        // Testing an input with line breaks in the FASTA sequences.
+        let (path, _dir) = make_test_file(">seq_1\nACG--\nCaGcA\naT\n\
+                                                 >seq_2\nAcGaG\nCa--A\ncT\n\
+                                                 >seq_3\nACGa-\n---Ca\nCT\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, false, 0.5, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACG-CacAaT\n\
+                                                 >seq_2\nAcGaCa-AcT\n\
+                                                 >seq_3\nACGa--CaCT\n");
     }
 }
