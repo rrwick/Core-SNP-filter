@@ -55,26 +55,45 @@ fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose:
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
     if !verbose {
         eprintln!("Core-SNP-filter");
-        eprintln!("  input file:             {}", filename.display());
-        eprintln!("  input sequence length:  {}", alignment_length);
-        eprintln!("  number of sequences:    {}", seq_count);
+        eprintln!("  input file:                    {}", filename.display());
+        eprintln!("  number of sequences:           {}", seq_count);
+        eprintln!("  input sequence length:         {}", alignment_length);
     }
 
     let mut keep = bitvec![1; alignment_length];
+    let (mut in_a, mut in_c, mut in_g, mut in_t, mut in_other, mut non_core) = (0, 0, 0, 0, 0, 0);
     if verbose {
         print_verbose_header();
     }
     for i in 0..alignment_length {
         let variation = has_variation(a[i], c[i], g[i], t[i]);
         let frac = acgt_counts[i] as f64 / seq_count as f64;
-        keep.set(i, keep_column(variation, frac, exclude_invariant, core));
+        if exclude_invariant && !variation {
+            keep.set(i, false);
+            if a[i] { in_a += 1; }
+            else if c[i] { in_c += 1; }
+            else if g[i] { in_g += 1; }
+            else if t[i] { in_t += 1; }
+            else { in_other += 1; }
+        }
+        if keep[i] && frac < core {
+            keep.set(i, false);
+            non_core += 1;
+        }
         if verbose {
             print_verbose_line(i, a[i], c[i], g[i], t[i], acgt_counts[i], variation, frac, keep[i]);
         }
     }
     let output_size = keep.iter().filter(|n| *n == true).count();
+    assert!(alignment_length == output_size + in_a + in_c + in_g + in_t + in_other + non_core);
     if !verbose {
-        eprintln!("  output sequence length: {}", output_size);
+        eprintln!("  invariant-A sites removed:     {}", in_a);
+        eprintln!("  invariant-C sites removed:     {}", in_c);
+        eprintln!("  invariant-G sites removed:     {}", in_g);
+        eprintln!("  invariant-T sites removed:     {}", in_t);
+        eprintln!("  other invariant sites removed: {}", in_other);
+        eprintln!("  non-core sites removed:        {}", non_core);
+        eprintln!("  output sequence length:        {}", output_size);
     }
 
     let mut fasta_reader = misc::open_fasta_file(filename);
@@ -121,14 +140,6 @@ fn get_fasta_header(record: &RefRecord) -> String {
         _       => (),
     }
     return header
-}
-
-
-fn keep_column(variation: bool, frac: f64, exclude_invariant: bool, core: f64) -> bool {
-    if !variation && exclude_invariant {
-        return false;
-    }
-    frac >= core
 }
 
 
@@ -216,16 +227,6 @@ mod tests {
     #[should_panic]
     fn test_check_arguments_3() {
         check_arguments(1.1);
-    }
-
-    #[test]
-    fn test_keep_column() {
-        assert_eq!(keep_column(true, 0.9, false, 0.0), true);
-        assert_eq!(keep_column(true, 0.9, true, 0.0), true);
-        assert_eq!(keep_column(true, 0.9, true, 0.8), true);
-        assert_eq!(keep_column(true, 0.9, true, 0.95), false);
-        assert_eq!(keep_column(false, 0.9, true, 0.0), false);
-        assert_eq!(keep_column(false, 0.9, true, 0.95), false);
     }
 
     #[test]
@@ -438,5 +439,31 @@ mod tests {
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACG-CacAaT\n\
                                                  >seq_2\nAcGaCa-AcT\n\
                                                  >seq_3\nACGa--CaCT\n");
+    }
+
+    #[test]
+    fn test_drop_columns_14() {
+        // Testing lots of non-base characters.
+        let (path, _dir) =       make_test_file(">seq_1\nAC---CGG\n\
+                                                 >seq_2\nCCCNNNNG\n\
+                                                 >seq_3\nACXQVPAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 0.0, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nAG\n\
+                                                 >seq_2\nCN\n\
+                                                 >seq_3\nAA\n");
+    }
+
+    #[test]
+    fn test_drop_columns_15() {
+        // Testing lots of non-base characters.
+        let (path, _dir) =       make_test_file(">seq_1\nAC---CGG\n\
+                                                 >seq_2\nCCCNNNNG\n\
+                                                 >seq_3\nACXQVPAG\n");
+        let mut stdout = Vec::new();
+        drop_columns(&path, true, 1.0, false, &mut stdout);
+        assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nA\n\
+                                                 >seq_2\nC\n\
+                                                 >seq_3\nA\n");
     }
 }
