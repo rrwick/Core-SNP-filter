@@ -1,13 +1,13 @@
 // Copyright 2023 Ryan Wick (rrwick@gmail.com)
-// https://github.com/rrwick/Drop-Columns
+// https://github.com/rrwick/Core-SNP-filter
 
-// This file is part of Drop-Columns. Drop-Columns is free software: you can redistribute it and/or
-// modify it under the terms of the GNU General Public License as published by the Free Software
-// Foundation, either version 3 of the License, or (at your option) any later version. Drop-Columns
-// is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
-// implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-// Public License for more details. You should have received a copy of the GNU General Public
-// License along with Drop-Columns. If not, see <http://www.gnu.org/licenses/>.
+// This file is part of Core-SNP-filter. Core-SNP-filter is free software: you can redistribute it
+// and/or modify it under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option) any later version.
+// Core-SNP-filter is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+// the GNU General Public License for more details. You should have received a copy of the GNU
+// General Public License along with Core-SNP-filter. If not, see <http://www.gnu.org/licenses/>.
 
 mod misc;
 
@@ -19,7 +19,7 @@ use std::path::PathBuf;
 
 
 #[derive(Parser)]
-#[clap(name = "dropcolumns",
+#[clap(name = "coresnpfilter",
        version = concat!("v", crate_version!()),
        about = crate_description!())]
 struct Cli {
