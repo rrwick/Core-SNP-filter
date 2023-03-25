@@ -1,5 +1,7 @@
 # Core-SNP-filter
 
+[![License GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+
 This is a tool to filter sites (i.e. columns) in a FASTA-format whole-genome pseudo-alignment based on:
 * Whether the site contains variation or not.
 * How conserved the site is, i.e. contains an unambiguous base in a sufficient fraction of the sequences.
