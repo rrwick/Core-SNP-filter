@@ -74,6 +74,8 @@ pub fn get_first_fasta_seq_length(filename: &PathBuf) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use flate2::Compression;
+    use flate2::write::GzEncoder;
     use std::fs::File;
     use std::io::Write;
     use tempfile::{TempDir,tempdir};
@@ -84,6 +86,16 @@ mod tests {
         let file_path = dir.path().join("test.fasta");
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", contents).unwrap();
+        (file_path, dir)
+    }
+
+    fn make_gzipped_test_file(contents: &str) -> (PathBuf, TempDir) {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.fasta.gz");
+        let mut file = File::create(&file_path).unwrap();
+        let mut e = GzEncoder::new(Vec::new(), Compression::default());
+        e.write_all(contents.as_bytes()).unwrap();
+        file.write_all(&e.finish().unwrap());
         (file_path, dir)
     }
 
@@ -100,15 +112,21 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_is_file_gzipped_2() {
+        let (path, _dir) = make_gzipped_test_file(">seq_1\nACGAT\n");
+        assert!(is_file_gzipped(&path));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_is_file_gzipped_3() {
         let (path, _dir) = make_test_file("");
         is_file_gzipped(&path);
     }
 
     #[test]
     #[should_panic]
-    fn test_is_file_gzipped_3() {
+    fn test_is_file_gzipped_4() {
         is_file_gzipped(&PathBuf::from("not_a_real_file"));
     }
 
@@ -125,6 +143,13 @@ mod tests {
     #[should_panic]
     fn test_get_first_fasta_seq_length_2() {
         let (path, _dir) = make_test_file("");
+        get_first_fasta_seq_length(&path);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_get_first_fasta_seq_length_3() {
+        let (path, _dir) = make_gzipped_test_file("");
         get_first_fasta_seq_length(&path);
     }
 }
