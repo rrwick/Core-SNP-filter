@@ -19,7 +19,7 @@ use std::path::PathBuf;
 
 
 #[derive(Parser)]
-#[clap(name = "coresnpfilter",
+#[clap(name = "Core-SNP-filter",
        version = concat!("v", crate_version!()),
        about = crate_description!())]
 struct Cli {
