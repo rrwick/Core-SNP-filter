@@ -8,6 +8,8 @@ I wrote Core-SNP-filter because I was using [Snippy](https://github.com/tseemann
 
 Core-SNP-filter is efficient. On a small input alignment (2 Mbp in length, 100 sequences), it runs in seconds. On a large input alignment (5 Mbp in length, 5000 sequences, 25 GB file size), it takes less than 10 minutes and only uses ~50 MB of RAM.
 
+Important caveat: Core-SNP-filter is only appropriate for DNA alignments, not protein alignments.
+
 
 
 ## Usage
@@ -15,7 +17,7 @@ Core-SNP-filter is efficient. On a small input alignment (2 Mbp in length, 100 s
 The executable named `coresnpfilter` takes a FASTA file as input. This must be an _aligned_ FASTA file, i.e. all sequences must be the same length. The characters in the FASTA sequences can be bases (e.g. `A` or `c`), gaps (`-`) or any other ASCII character (e.g. `N` for ambiguous bases or `X` for masked bases). The input FASTA can be gzipped, and line breaks (multiple lines per sequence) is okay.
 
 There are two main options:
-* `-e`/`--exclude_invariant`: if used, all invariant sites in the alignment are removed. A site counts as invariant if the number of unique unambiguous bases (`A`, `C`, `G` or `T`) at that site is one or zero. For example, a site with only `A` is invariant, but a site with both `A` and `C` is not invariant. Gaps and other characters do not count, e.g. a site with only `A`, `N` and `-` is invariant. Case does not matter, e.g. a site with only `A` and `a` is invariant. 
+* `-e`/`--exclude_invariant`: if used, all invariant sites in the alignment are removed. A site counts as invariant if the number of unique unambiguous bases (`A`, `C`, `G` or `T`) at that site is one or zero. For example, a site with only `A` is invariant, but a site with both `A` and `C` is not invariant. Gaps and other characters do not count, e.g. a site with only `A`, `N` and `-` is invariant. Case does not matter, e.g. a site with only `A` and `a` is invariant.
 * `-c`/`--core`: at least this fraction of the sequences must contain an unambiguous base (`A`, `C`, `G` or `T`) at a site for the site to be included. The default is `0.0`, i.e. sites are not filtered based on core fraction. If `1.0` is given, all sites with gaps or other characters will be removed, leaving an alignment containing only unambiguous bases. A more relaxed value of `0.95` will ensure that each site contains mostly unambiguous bases, but up to 5% of the sequences can be gaps or other characters.
 
 Core-SNP-filter outputs a FASTA alignment to stdout. The output will have the same number of sequences as the input, but (depending on the options used) the length of the sequences will likely be shorter. The header lines (names and descriptions) of the output will be the same as the input, and there will be no line breaks in the sequences (each sequence gets one line). Some basic information (input file, input sequence length, number of sequences and output sequence length) is printed to stderr.
