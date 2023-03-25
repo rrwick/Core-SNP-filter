@@ -6,11 +6,11 @@ This is a tool to filter sites (i.e. columns) in a FASTA-format whole-genome pse
 
 I wrote Core-SNP-filter because I was using [Snippy](https://github.com/tseemann/snippy), and the `snippy-core` command produces a `core.full.aln` file (contains all sites regardless of variation and conservation) and `core.aln` (only contains invariant sites with 100% conservation). I wanted a tool that could produce a core SNP alignment, but with more flexibility, e.g. including sites with ≥95% conservation.
 
-Core-SNP-filter is written in Rust, making it pretty fast. On a small input alignment (2 Mbp in length, 100 sequences), it runs in seconds. On a large input alignment (5 Mbp in length, 5000 sequences), it takes less than 10 minutes.
+Core-SNP-filter is efficient. On a small input alignment (2 Mbp in length, 100 sequences), it runs in seconds. On a large input alignment (5 Mbp in length, 5000 sequences, 25 GB file size), it takes less than 10 minutes and only uses ~50 MB of RAM.
 
 
 
-### Usage
+## Usage
 
 The executable named `coresnpfilter` takes a FASTA file as input. This must be an _aligned_ FASTA file, i.e. all sequences must be the same length. The characters in the FASTA sequences can be bases (e.g. `A` or `c`), gaps (`-`) or any other ASCII character (e.g. `N` for ambiguous bases or `X` for masked bases). The input FASTA can be gzipped, and line breaks (multiple lines per sequence) is okay.
 
@@ -57,7 +57,7 @@ Options:
 
 
 
-### Installation from pre-built binaries
+## Installation from pre-built binaries
 
 Core-SNP-filter compiles to a single executable binary (`coresnpfilter`), which makes installation easy!
 
@@ -67,7 +67,7 @@ Alternatively, you don't need to install Core-SNP-filter at all. Instead, just r
 
 
 
-### Installation from source
+## Installation from source
 
 If you are using incompatible hardware or a different OS, then you'll have to build Core-SNP-filter from source. [Install Rust](https://www.rust-lang.org/tools/install) if you don't already have it. Then clone and build Core-SNP-filter like this:
 ```
@@ -80,7 +80,18 @@ You'll find the freshly built executable in `target/release/coresnpfilter`, whic
 
 
 
-### Verbose output
+## Demo dataset
+
+This repo's [`demo.fasta.gz`](https://raw.githubusercontent.com/rrwick/Core-SNP-filter/main/demo.fasta.gz) file is a pseudo-alignment made from 40 _Klebsiella_ samples (the original was ~5 Mbp long but I subsetted it down to 100 kbp to save space). It has many gaps, invariant sites and Ns, so Core-SNP-filter can make it a lot smaller.
+
+For example, you can use Core-SNP-filter to create an invariant-free 95%-core alignment, then build a tree with [IQ-TREE](http://www.iqtree.org):
+```bash
+coresnpfilter -e -c 0.95 demo.fasta.gz > demo_core.fasta
+iqtree2 -s demo_core.fasta -T 4
+```
+
+
+## Verbose output
 
 Using the `--verbose` option will make Core-SNP-filter print a per-site table to stderr. Save it to file like this:
 ```bash
@@ -88,23 +99,25 @@ coresnpfilter -e -c 0.95 --verbose core.full.aln 1> filtered.aln 2> core_snp_tab
 ```
 
 This is mainly for debugging purposes, so you probably don't want to use it. But if you do, the columns are:
-* `pos`: 1-based index of the input alignment site
-* `a`: whether any sequence at this site contains `A` or `a`
-* `c`: whether any sequence at this site contains `C` or `c`
-* `g`: whether any sequence at this site contains `G` or `g`
-* `t`: whether any sequence at this site contains `T` or `t`
-* `count`: the number of sequences at this site which contain an unambiguous base
-* `frac`: the fraction of sequences at this site which contain an unambiguous base
-* `var`: whether there is any variation at this site (i.e. two or more of the `a`/`c`/`g`/`t` columns are true)
-* `keep`: whether the site passed the filter and is included in the output
+1. `pos`: 1-based index of the input alignment site
+2. `a`: whether any sequence at this site contains `A` or `a`
+3. `c`: whether any sequence at this site contains `C` or `c`
+4. `g`: whether any sequence at this site contains `G` or `g`
+5. `t`: whether any sequence at this site contains `T` or `t`
+6. `count`: the number of sequences at this site which contain an unambiguous base
+7. `frac`: the fraction of sequences at this site which contain an unambiguous base
+8. `var`: whether there is any variation at this site (i.e. two or more of the `a`/`c`/`g`/`t` columns are true)
+9. `keep`: whether the site passed the filter and is included in the output
 
-Boolean columns use `0` for no and `1` for yes. You can use this table to see which sites in your input alignment have made it into the output alignment:
+Boolean columns use `0` for no and `1` for yes.
+
+For example, you can use this table to see which sites in your input alignment have made it into the output alignment:
 ```bash
 awk '{if ($9==1) print $1;}' core_snp_table.tsv
 ```
 
 
 
-### License
+## License
 
 [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html)
