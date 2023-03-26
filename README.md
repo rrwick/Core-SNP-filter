@@ -88,11 +88,31 @@ You'll find the freshly built executable in `target/release/coresnpfilter`, whic
 
 This repo's [`demo.fasta.gz`](https://raw.githubusercontent.com/rrwick/Core-SNP-filter/main/demo.fasta.gz) file is a pseudo-alignment made from 40 _Klebsiella_ samples (the original was ~5 Mbp long but I subsetted it down to 100 kbp to save space). It has many gaps, invariant sites and Ns, so Core-SNP-filter can make it a lot smaller.
 
-For example, you can use Core-SNP-filter to create an invariant-free 95%-core alignment, then build a tree with [IQ-TREE](http://www.iqtree.org):
+For example, you can use Core-SNP-filter to create an invariant-free 95%-core alignment:
 ```bash
 coresnpfilter -e -c 0.95 demo.fasta.gz > demo_core.fasta
+```
+
+The stderr output will look like this:
+```
+Core-SNP-filter
+  input file:                    demo.fasta.gz
+  number of sequences:           40
+  input sequence length:         10000
+  invariant-A sites removed:     1394
+  invariant-C sites removed:     1763
+  invariant-G sites removed:     1849
+  invariant-T sites removed:     1378
+  other invariant sites removed: 322
+  non-core sites removed:        2143
+  output sequence length:        1151
+```
+
+You can then build a tree with a program such as [IQ-TREE](http://www.iqtree.org):
+```bash
 iqtree2 -s demo_core.fasta -T 4
 ```
+
 
 
 ## Verbose output
