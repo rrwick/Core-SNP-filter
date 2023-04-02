@@ -16,7 +16,7 @@ Important caveat: Core-SNP-filter is only appropriate for DNA alignments, not pr
 
 ## Usage
 
-The executable named `coresnpfilter` takes a FASTA file as input. This must be an _aligned_ FASTA file, i.e. all sequences must be the same length. The characters in the FASTA sequences can be bases (e.g. `A` or `c`), gaps (`-`) or any other ASCII character (e.g. `N` for ambiguous bases or `X` for masked bases). The input FASTA can be gzipped, and line breaks (multiple lines per sequence) is okay.
+The executable named `coresnpfilter` takes a FASTA file as input. This must be an _aligned_ FASTA file, i.e. all sequences must be the same length. The characters in the FASTA sequences can be bases (e.g. `A` or `c`), gaps (`-`) or any other ASCII character (e.g. `N` for ambiguous bases or `X` for masked bases). The input FASTA can be gzipped, and line breaks (multiple lines per sequence) are okay.
 
 There are two main options:
 * `-e`/`--exclude_invariant`: if used, all invariant sites in the alignment are removed. A site counts as invariant if the number of unique unambiguous bases (`A`, `C`, `G` or `T`) at that site is one or zero. For example, a site with only `A` is invariant, but a site with both `A` and `C` is not invariant. Gaps and other characters do not count, e.g. a site with only `A`, `N` and `-` is invariant. Case does not matter, e.g. a site with only `A` and `a` is invariant.
