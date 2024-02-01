@@ -12,5 +12,5 @@ rust-version = "1.66"
 bitvec = "1"
 clap = { version = "4", features = ["derive", "cargo", "wrap_help"] }
 flate2 = "1.0"
-seq_io = "0.3.1"
+seq_io = "0.3"
 tempfile = "3"
