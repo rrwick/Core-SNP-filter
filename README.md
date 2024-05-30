@@ -44,7 +44,7 @@ coresnpfilter core.full.aln > filtered.aln
 
 Full help text:
 ```
-Core SNP filter
+Core-SNP-filter
 
 Usage: coresnpfilter [OPTIONS] <INPUT>
 
@@ -86,7 +86,7 @@ You'll find the freshly built executable in `target/release/coresnpfilter`, whic
 
 ## Demo dataset
 
-This repo's [`demo.fasta.gz`](https://raw.githubusercontent.com/rrwick/Core-SNP-filter/main/demo.fasta.gz) file is a pseudo-alignment made from 40 _Klebsiella_ samples (the original was ~5 Mbp long but I subsetted it down to 100 kbp to save space). It has many gaps, invariant sites and Ns, so Core-SNP-filter can make it a lot smaller.
+This repo's [`demo.fasta.gz`](https://raw.githubusercontent.com/rrwick/Core-SNP-filter/main/demo.fasta.gz) file is a pseudo-alignment made from 40 _Klebsiella_ samples (the original was ~5 Mbp long but I subsetted it down to 10 kbp to save space). It has many gaps, invariant sites and Ns, so Core-SNP-filter can make it a lot smaller.
 
 For example, you can use Core-SNP-filter to create an invariant-free 95%-core alignment:
 ```bash
