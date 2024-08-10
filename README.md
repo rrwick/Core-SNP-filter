@@ -133,9 +133,9 @@ This is mainly for debugging purposes, so you probably don't want to use it. But
 8. `var`: whether there is any variation at this site (i.e. two or more of the `a`/`c`/`g`/`t` columns are true)
 9. `keep`: whether the site passed the filter and is included in the output
 
-Boolean columns use `0` for no and `1` for yes.
+Boolean columns use `0` for false and `1` for true.
 
-For example, you can use this table to see which sites in your input alignment have made it into the output alignment:
+For example, you can use this table to see which sites in your input alignment are included in the output alignment:
 ```bash
 awk '{if ($9==1) print $1;}' core_snp_table.tsv
 ```
