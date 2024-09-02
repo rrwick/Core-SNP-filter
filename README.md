@@ -142,6 +142,12 @@ awk '{if ($9==1) print $1;}' core_snp_table.tsv
 
 
 
+## Citation
+
+[**Taouk ML, Featherstone L, Taiaroa G, Ingle DJ, Stinear TP, Wick RR. Exploring SNP Filtering Strategies: The Influence of Strict vs Soft Core. bioRxiv. 2024. doi:10.1101/2024.08.26.609800.**](https://doi.org/10.1101/2024.08.26.609800)
+
+
+
 ## License
 
 [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html)
