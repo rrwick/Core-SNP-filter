@@ -15,7 +15,7 @@ use bitvec::prelude::*;
 use clap::{Parser, crate_version, crate_description};
 use seq_io::fasta::{Record, RefRecord};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 
 #[derive(Parser)]
@@ -49,7 +49,7 @@ fn main() {
 
 /// This is the primary function of the program. For easier testing, I factored it out of the main
 /// function and use the stdout argument to allow for capturing the output.
-fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose: bool,
+fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bool,
                 stdout: &mut dyn io::Write) {
     let alignment_length = misc::get_first_fasta_seq_length(filename);
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
@@ -105,16 +105,16 @@ fn drop_columns(filename: &PathBuf, exclude_invariant: bool, core: f64, verbose:
 
 
 fn check_arguments(core: f64) {
-    if core < 0.0 || core > 1.0 {
-        panic!("--core must be between 0 and 1 (inclusive)")
+    if !(0.0..=1.0).contains(&core) {
+        panic!("--core must be between 0 and 1 (inclusive)");
     }
 }
 
 
 fn output_sequence(record: &RefRecord, keep: &BitVec, output_size: usize,
                    stdout: &mut dyn io::Write) {
-    let header = get_fasta_header(&record);
-    let seq = remove_columns(&record, &keep, output_size);
+    let header = get_fasta_header(record);
+    let seq = remove_columns(record, keep, output_size);
     writeln!(stdout, ">{}\n{}", header, seq).unwrap();
 }
 
@@ -135,11 +135,10 @@ fn remove_columns(record: &RefRecord, keep: &BitVec, output_size: usize) -> Stri
 fn get_fasta_header(record: &RefRecord) -> String {
     let mut header = String::new();
     header += record.id().unwrap();
-    match record.desc() {
-        Some(x) => header += &format!(" {}", x.unwrap())[..],
-        _       => (),
+    if let Some(x) = record.desc() {
+        header += &format!(" {}", x.unwrap());
     }
-    return header
+    header
 }
 
 
@@ -157,14 +156,16 @@ fn print_verbose_header() {
 fn print_verbose_line(i: usize, a: bool, c: bool, g: bool, t: bool, acgt_counts: usize,
                       variation: bool, frac: f64, keep: bool) {
     eprintln!("{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\t{}\t{}", i+1, a as i32, c as i32, g as i32, t as i32,
-              acgt_counts, frac, variation as i32, keep as i32);}
+              acgt_counts, frac, variation as i32, keep as i32);
+}
 
 
 /// Returns:
 /// * a bitvector for each of the four canonical bases for each position of the alignment
 /// * the number of sequences in the alignment
 /// * how many of the sequences have a canonical base for each position of the alignment
-fn bitvectors_and_counts(filename: &PathBuf, alignment_length: usize) -> (BitVec, BitVec, BitVec, BitVec, usize, Vec<usize>){
+fn bitvectors_and_counts(filename: &Path, alignment_length: usize)
+        -> (BitVec, BitVec, BitVec, BitVec, usize, Vec<usize>){
     let mut a = bitvec![0; alignment_length];
     let mut c = bitvec![0; alignment_length];
     let mut g = bitvec![0; alignment_length];

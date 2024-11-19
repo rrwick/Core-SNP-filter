@@ -11,12 +11,12 @@
 
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
-use std::path::{Path, PathBuf};
-use seq_io::fasta::{Reader};
+use std::path::Path;
+use seq_io::fasta::Reader;
 use flate2::read::GzDecoder;
 
 
-pub fn check_if_file_exists(filename: &PathBuf) {
+pub fn check_if_file_exists(filename: &Path) {
     if !Path::new(filename).exists() {
         panic!("{:?} file does not exist", filename);
     }
@@ -26,8 +26,8 @@ pub fn check_if_file_exists(filename: &PathBuf) {
 /// This function returns true if the file appears to be gzipped (based on the first two bytes) and
 /// false if not. If it can't open the file or read the first two bytes, it will quit with an error
 /// message.
-pub fn is_file_gzipped(filename: &PathBuf) -> bool {
-    let open_result = File::open(&filename);
+pub fn is_file_gzipped(filename: &Path) -> bool {
+    let open_result = File::open(filename);
     match open_result {
         Ok(_)  => (),
         Err(_) => panic!("unable to open {:?}", filename),
@@ -48,7 +48,7 @@ pub fn is_file_gzipped(filename: &PathBuf) -> bool {
 
 
 /// Returns an iterator over a FASTA file - works with either uncompressed or gzipped FASTAs.
-pub fn open_fasta_file(filename: &PathBuf) -> Reader<Box<dyn std::io::Read>> {
+pub fn open_fasta_file(filename: &Path) -> Reader<Box<dyn std::io::Read>> {
     check_if_file_exists(filename);
     let file = match File::open(filename) {
         Ok(file) => file,
@@ -62,13 +62,13 @@ pub fn open_fasta_file(filename: &PathBuf) -> Reader<Box<dyn std::io::Read>> {
 }
 
 
-pub fn get_first_fasta_seq_length(filename: &PathBuf) -> usize {
+pub fn get_first_fasta_seq_length(filename: &Path) -> usize {
     let mut fasta_reader = open_fasta_file(filename);
-    while let Some(record) = fasta_reader.next() {
+    if let Some(record) = fasta_reader.next() {
         let record = record.expect("Error reading record");
         return record.full_seq().len();
     }
-    panic!("no sequences in input file");
+    panic!("No sequences in input file");
 }
 
 
@@ -78,6 +78,7 @@ mod tests {
     use flate2::write::GzEncoder;
     use std::fs::File;
     use std::io::Write;
+    use std::path::PathBuf;
     use tempfile::{TempDir,tempdir};
     use super::*;
 
@@ -95,7 +96,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         e.write_all(contents.as_bytes()).unwrap();
-        file.write_all(&e.finish().unwrap());
+        let _ = file.write_all(&e.finish().unwrap());
         (file_path, dir)
     }
 
