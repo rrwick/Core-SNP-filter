@@ -9,16 +9,41 @@
 // the GNU General Public License for more details. You should have received a copy of the GNU
 // General Public License along with Core-SNP-filter. If not, see <http://www.gnu.org/licenses/>.
 
-use std::fs::File;
+use std::fs::{File, metadata};
 use std::io::{prelude::*, BufReader};
 use std::path::Path;
 use seq_io::fasta::Reader;
 use flate2::read::GzDecoder;
 
 
+#[cfg(not(test))]
+/// For friendly error messages, this function normally just prints the error and quits. But when
+/// running unit tests, it instead panics so the test can catch it.
+pub fn quit_with_error(text: &str) -> ! {
+    eprintln!();
+    eprintln!("Error: {}", text);
+    std::process::exit(1);
+}
+#[cfg(test)]
+pub fn quit_with_error(text: &str) -> ! {
+    panic!("{}", text);
+}
+
+
+pub fn check_if_file_is_empty(filename: &Path) {
+    if let Ok(metadata) = metadata(filename) {
+        if metadata.len() == 0 {
+            quit_with_error(&format!("{} is empty", filename.display()));
+        }
+    } else {
+        quit_with_error(&format!("could not access {}", filename.display()));
+    }
+}
+
+
 pub fn check_if_file_exists(filename: &Path) {
     if !Path::new(filename).exists() {
-        panic!("{:?} file does not exist", filename);
+        quit_with_error(&format!("{} does not exist", filename.display()));
     }
 }
 
@@ -30,7 +55,7 @@ pub fn is_file_gzipped(filename: &Path) -> bool {
     let open_result = File::open(filename);
     match open_result {
         Ok(_)  => (),
-        Err(_) => panic!("unable to open {:?}", filename),
+        Err(e) => quit_with_error(&format!("unable to open {}\n{}", filename.display(), e)),
     }
     let file = open_result.unwrap();
 
@@ -40,7 +65,7 @@ pub fn is_file_gzipped(filename: &Path) -> bool {
     let read_result = reader.read_exact(&mut buf);
     match read_result {
         Ok(_)  => (),
-        Err(_) => panic!("{:?} is too small", filename),
+        Err(e) => quit_with_error(&format!("{} is too small\n{}", filename.display(), e)),
     }
 
     buf[0] == 31 && buf[1] == 139
@@ -50,9 +75,11 @@ pub fn is_file_gzipped(filename: &Path) -> bool {
 /// Returns an iterator over a FASTA file - works with either uncompressed or gzipped FASTAs.
 pub fn open_fasta_file(filename: &Path) -> Reader<Box<dyn std::io::Read>> {
     check_if_file_exists(filename);
+    check_if_file_is_empty(filename);
     let file = match File::open(filename) {
         Ok(file) => file,
-        Err(error) => panic!("There was a problem opening the file: {:?}", error),
+        Err(e) => quit_with_error(&format!("There was a problem opening {}:\n{}",
+                                           filename.display(), e)),
     };
     let reader: Box<dyn Read> = match is_file_gzipped(filename) {
         true => Box::new(GzDecoder::new(file)),
@@ -68,7 +95,7 @@ pub fn get_first_fasta_seq_length(filename: &Path) -> usize {
         let record = record.expect("Error reading record");
         return record.full_seq().len();
     }
-    panic!("No sequences in input file");
+    quit_with_error(&format!("{} contains no sequences", filename.display()));
 }
 
 
@@ -98,6 +125,19 @@ mod tests {
         e.write_all(contents.as_bytes()).unwrap();
         let _ = file.write_all(&e.finish().unwrap());
         (file_path, dir)
+    }
+
+    #[test]
+    fn test_check_if_file_is_empty_1() {
+        let (path, _dir) = make_test_file(">seq_1\nACGAT\n");
+        check_if_file_is_empty(&path);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_check_if_file_is_empty_2() {
+        let (path, _dir) = make_test_file("");
+        check_if_file_is_empty(&path);
     }
 
     #[test]

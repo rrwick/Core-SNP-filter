@@ -106,7 +106,7 @@ fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bo
 
 fn check_arguments(core: f64) {
     if !(0.0..=1.0).contains(&core) {
-        panic!("--core must be between 0 and 1 (inclusive)");
+        misc::quit_with_error("--core must be between 0 and 1 (inclusive)");
     }
 }
 
@@ -178,7 +178,7 @@ fn bitvectors_and_counts(filename: &Path, alignment_length: usize)
         let record = record.expect("Error reading record");
         let seq = record.full_seq();
         if alignment_length != seq.len() {
-            panic!("all sequences must be equal length");
+            misc::quit_with_error("all sequences must be equal length");
         }
         seq_count += 1;
         for i in 0..alignment_length {
