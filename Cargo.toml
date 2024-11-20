@@ -1,6 +1,6 @@
 [package]
 name = "coresnpfilter"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Ryan Wick <rrwick@gmail.com>"]
 edition = "2018"
 description = "Core-SNP-filter"
@@ -9,8 +9,8 @@ rust-version = "1.66"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitvec = "1"
-clap = { version = "4", features = ["derive", "cargo", "wrap_help"] }
+bitvec = "1.0"
+clap = { version = "4.5", features = ["derive", "cargo", "wrap_help"] }
 flate2 = "1.0"
 seq_io = "0.3"
-tempfile = "3"
+tempfile = "3.14"
