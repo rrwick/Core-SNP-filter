@@ -24,6 +24,8 @@ There are two main options:
 
 Core-SNP-filter outputs a FASTA alignment to stdout. The output will have the same number of sequences as the input, but (depending on the options used) the length of the sequences will likely be shorter. The header lines (names and descriptions) of the output will be the same as the input, and there will be no line breaks in the sequences (each sequence gets one line). Some basic information (input file, input sequence length, number of sequences and output sequence length) is printed to stderr.
 
+Note that Core-SNP-filter reads the input alignment multiple times during processing instead of storing it in memory. Therefore, the input alignment must be a literal file – Core-SNP-filter cannot accept input via stdin or process substitution (e.g. `<(command)` syntax).
+
 Some example commands:
 ```bash
 # Exclude invariant sites:
