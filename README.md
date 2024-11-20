@@ -55,6 +55,7 @@ Options:
   -c, --core <CORE>        Restrict to core genome (0.0 to 1.0, default = 0.0)
   -e, --exclude_invariant  Exclude invariant sites
   -t, --table <TABLE>      Create a table with per-site information
+  -C, --invariant_counts   Output invariant site counts (suitable for IQ-TREE -fconst) and nothing else
   -h, --help               Print help
   -V, --version            Print version
 ```
@@ -118,9 +119,22 @@ iqtree2 -s demo_core.fasta -T 4
 
 
 
+## Invariant site counts
+
+Using the `-C`/`--invariant_counts` option will make Core-SNP-filter print comma-delimited `a`/`c`/`g`/`t` invariant-site counts to stdout. This behaves the same as `snp-sites -C`. These counts can then be given to IQ-TREE via its `-fconst` option:
+```bash
+coresnpfilter -e -c 0.95 demo.fasta.gz > demo_core.fasta
+counts=$(coresnpfilter -C demo.fasta.gz)
+iqtree2 -s demo_core.fasta -T 4 -fconst "$counts"
+```
+
+When the `-C`/`--invariant_counts` option is used, no other options are allowed.
+
+
+
 ## Per-site table
 
-Using the `--table` option will make Core-SNP-filter write a per-site table in TSV format:
+Using the `-t`/`--table` option will make Core-SNP-filter write a per-site table in TSV format:
 ```bash
 coresnpfilter -e -c 0.95 --table core_snp_table.tsv core.full.aln > filtered.aln
 ```
