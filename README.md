@@ -94,7 +94,7 @@ For example, you can use Core-SNP-filter to create an invariant-free 95%-core al
 coresnpfilter -e -c 0.95 demo.fasta.gz > demo_core.fasta
 ```
 
-The stderr output will look like this:
+The following information will be printed to stderr:
 ```
 Core-SNP-filter
 ──────────────────────────────────────────
@@ -146,7 +146,7 @@ The table columns are:
 4. `g`: whether any sequence at this site contains `G` or `g`
 5. `t`: whether any sequence at this site contains `T` or `t`
 6. `count`: the number of sequences at this site which contain an unambiguous base
-7. `frac`: the fraction of sequences at this site which contain an unambiguous base
+7. `frac`: the fraction of sequences at this site which contain an unambiguous base (`count` divided by the total number of sequences)
 8. `var`: whether there is any variation at this site (i.e. two or more of the `a`/`c`/`g`/`t` columns are true)
 9. `keep`: whether the site passed the filter and is included in the output
 
