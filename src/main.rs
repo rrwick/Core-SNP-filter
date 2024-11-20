@@ -14,7 +14,8 @@ mod misc;
 use bitvec::prelude::*;
 use clap::{Parser, crate_version, crate_description};
 use seq_io::fasta::{Record, RefRecord};
-use std::io;
+use std::fs::File;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 
@@ -23,47 +24,43 @@ use std::path::{Path, PathBuf};
        version = concat!("v", crate_version!()),
        about = crate_description!())]
 struct Cli {
+    /// Input alignment
+    input: PathBuf,
+
     /// Restrict to core genome (0.0 to 1.0, default = 0.0)
-    #[arg(short = 'c', long = "core", default_value = "0.0")]
+    #[arg(short = 'c', long = "core", default_value = "0.0", hide_default_value = true)]
     core: f64,
 
     /// Exclude invariant sites
     #[arg(short = 'e', long = "exclude_invariant")]
     exclude_invariant: bool,
 
-    /// Verbose output
-    #[arg(long = "verbose")]
-    verbose: bool,
-
-    /// Input alignment
-    input: PathBuf,
+    /// Create a table with per-site information
+    #[arg(short = 't', long = "table")]
+    table: Option<PathBuf>,
 }
 
 
 fn main() {
     let cli = Cli::parse();
     check_arguments(cli.core);
-    drop_columns(&cli.input, cli.exclude_invariant, cli.core, cli.verbose, &mut io::stdout());
+    drop_columns(&cli.input, cli.exclude_invariant, cli.core, cli.table, &mut io::stdout());
 }
 
 
 /// This is the primary function of the program. For easier testing, I factored it out of the main
 /// function and use the stdout argument to allow for capturing the output.
-fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bool,
+fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, table: Option<PathBuf>,
                 stdout: &mut dyn io::Write) {
     let alignment_length = misc::get_first_fasta_seq_length(filename);
     let max_width = alignment_length.to_string().len();
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
-    if !verbose {
-        stderr_display_1(filename, max_width, seq_count, alignment_length);
-    }
+    stderr_display_1(filename, max_width, seq_count, alignment_length);
 
     let mut keep = bitvec![1; alignment_length];
     let (mut inv_a, mut inv_c, mut inv_g, mut inv_t, mut inv_other) = (0, 0, 0, 0, 0);
     let mut non_core = 0;
-    if verbose {
-        print_verbose_header();
-    }
+    let mut table_file = create_table(table);
     for i in 0..alignment_length {
         let variation = has_variation(a[i], c[i], g[i], t[i]);
         let frac = acgt_counts[i] as f64 / seq_count as f64;
@@ -79,18 +76,15 @@ fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bo
             keep.set(i, false);
             non_core += 1;
         }
-        if verbose {
-            print_verbose_line(i, a[i], c[i], g[i], t[i], acgt_counts[i], variation, frac, keep[i]);
-        }
+        write_table_line(table_file.as_mut(), i, a[i], c[i], g[i], t[i],  acgt_counts[i],
+                         variation, frac, keep[i]);
     }
     let output_size = keep.iter().filter(|n| *n == true).count();
     let inv_total = inv_a + inv_c + inv_g + inv_t + inv_other;
     let removed_total = inv_total + non_core;
     assert!(alignment_length == output_size + removed_total);
-    if !verbose {
-        stderr_display_2(max_width, output_size, removed_total, non_core, inv_total,
-                         inv_a, inv_c, inv_g, inv_t, inv_other);
-    }
+    stderr_display_2(max_width, output_size, removed_total, non_core, inv_total,
+                     inv_a, inv_c, inv_g, inv_t, inv_other);
 
     let mut fasta_reader = misc::open_fasta_file(filename);
     while let Some(record) = fasta_reader.next() {
@@ -170,15 +164,25 @@ fn stderr_display_2(max_width: usize, output_size: usize, removed_total: usize, 
 }
 
 
-fn print_verbose_header() {
-    eprintln!("pos\ta\tc\tg\tt\tcount\tfrac\tvar\tkeep");
+fn create_table(table: Option<PathBuf>) -> Option<File> {
+    if let Some(table_path) = table {
+        let mut file = File::create(&table_path).expect("Failed to create table file");
+        writeln!(file, "pos\ta\tc\tg\tt\tcount\tfrac\tvar\tkeep")
+            .expect("Failed to write to table file");
+        Some(file)
+    } else {
+        None
+    }
 }
 
 
-fn print_verbose_line(i: usize, a: bool, c: bool, g: bool, t: bool, acgt_counts: usize,
-                      variation: bool, frac: f64, keep: bool) {
-    eprintln!("{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\t{}\t{}", i+1, a as i32, c as i32, g as i32, t as i32,
-              acgt_counts, frac, variation as i32, keep as i32);
+fn write_table_line(file: Option<&mut File>, i: usize, a: bool, c: bool, g: bool, t: bool,
+                    acgt_counts: usize, variation: bool, frac: f64, keep: bool) {
+    if let Some(f) = file {
+        writeln!(f, "{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\t{}\t{}", i+1, a as i32, c as i32, g as i32,
+                 t as i32, acgt_counts, frac, variation as i32, keep as i32)
+            .expect("Failed to write to table file");
+    }
 }
 
 
@@ -304,7 +308,7 @@ mod tests {
                                                  >seq_2\nACCATTAG\n\
                                                  >seq_3\nACGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, false, 0.0, false, &mut stdout);
+        drop_columns(&path, false, 0.0, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACGATCAG\n\
                                                  >seq_2\nACCATTAG\n\
                                                  >seq_3\nACGATCAG\n");
@@ -317,7 +321,7 @@ mod tests {
                                                  >seq_2\nACCATTAG\n\
                                                  >seq_3\nACGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.0, false, &mut stdout);
+        drop_columns(&path, true, 0.0, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nGC\n\
                                                  >seq_2\nCT\n\
                                                  >seq_3\nGC\n");
@@ -330,7 +334,7 @@ mod tests {
                                                  >seq_2\nAC----CG\n\
                                                  >seq_3\nAGGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, false, 0.6, false, &mut stdout);
+        drop_columns(&path, false, 0.6, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACGATCAG\n\
                                                  >seq_2\nAC----CG\n\
                                                  >seq_3\nAGGATCAG\n");
@@ -343,7 +347,7 @@ mod tests {
                                                  >seq_2\nAC----CG\n\
                                                  >seq_3\nAGGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, false, 0.7, false, &mut stdout);
+        drop_columns(&path, false, 0.7, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACAG\n\
                                                  >seq_2\nACCG\n\
                                                  >seq_3\nAGAG\n");
@@ -351,12 +355,14 @@ mod tests {
 
     #[test]
     fn test_drop_columns_5() {
-        // Same as previous but dropping invariant sites and with verbose output.
+        // Same as previous but dropping invariant sites and with per-site table.
         let (path, _dir) =       make_test_file(">seq_1\nACGATCAG\n\
                                                  >seq_2\nAC----CG\n\
                                                  >seq_3\nAGGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.7, true, &mut stdout);
+        let dir = tempdir().unwrap();
+        let table_path = dir.path().join("table.tsv");
+        drop_columns(&path, true, 0.7, Some(table_path), &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nCA\n\
                                                  >seq_2\nCC\n\
                                                  >seq_3\nGA\n");
@@ -369,7 +375,9 @@ mod tests {
                                                  >seq_2\nAC----CG\n\
                                                  >seq_3 lots of stuff\nAGGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.7, true, &mut stdout);
+        let dir = tempdir().unwrap();
+        let table_path = dir.path().join("table.tsv");
+        drop_columns(&path, true, 0.7, Some(table_path), &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1 info\nCA\n\
                                                  >seq_2\nCC\n\
                                                  >seq_3 lots of stuff\nGA\n");
@@ -383,7 +391,9 @@ mod tests {
                                                  >seq_2\nAC----CGA\n\
                                                  >seq_3\nAGGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.7, true, &mut stdout);
+        let dir = tempdir().unwrap();
+        let table_path = dir.path().join("table.tsv");
+        drop_columns(&path, true, 0.7, Some(table_path), &mut stdout);
     }
 
     #[test]
@@ -393,7 +403,7 @@ mod tests {
                                                  >seq_2\nAC----AC\n\
                                                  >seq_3\nACGATCAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.7, false, &mut stdout);
+        drop_columns(&path, true, 0.7, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\n\n\
                                                  >seq_2\n\n\
                                                  >seq_3\n\n");
@@ -406,7 +416,7 @@ mod tests {
                                                  >seq_2\nAcGaGCaGcAcT\n\
                                                  >seq_3\nACGatTAgCaCT\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, false, 0.5, false, &mut stdout);
+        drop_columns(&path, false, 0.5, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACGAtCaGcAaT\n\
                                                  >seq_2\nAcGaGCaGcAcT\n\
                                                  >seq_3\nACGatTAgCaCT\n");
@@ -419,7 +429,7 @@ mod tests {
                                                  >seq_2\nAcGaGCaGcAcT\n\
                                                  >seq_3\nACGatTAgCaCT\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.5, false, &mut stdout);
+        drop_columns(&path, true, 0.5, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\ntCa\n\
                                                  >seq_2\nGCc\n\
                                                  >seq_3\ntTC\n");
@@ -432,7 +442,7 @@ mod tests {
                                                  >seq_2\nAcGaGCa--AcT\n\
                                                  >seq_3\nACGa----CaCT\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, false, 0.5, false, &mut stdout);
+        drop_columns(&path, false, 0.5, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACG-CacAaT\n\
                                                  >seq_2\nAcGaCa-AcT\n\
                                                  >seq_3\nACGa--CaCT\n");
@@ -445,7 +455,7 @@ mod tests {
                                                  >seq_2\nAcGaGCa--AcT\n\
                                                  >seq_3\nACGa----CaCT\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.5, false, &mut stdout);
+        drop_columns(&path, true, 0.5, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\na\n\
                                                  >seq_2\nc\n\
                                                  >seq_3\nC\n");
@@ -458,7 +468,7 @@ mod tests {
                                                  >seq_2\nAcGaG\nCa--A\ncT\n\
                                                  >seq_3\nACGa-\n---Ca\nCT\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, false, 0.5, false, &mut stdout);
+        drop_columns(&path, false, 0.5, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nACG-CacAaT\n\
                                                  >seq_2\nAcGaCa-AcT\n\
                                                  >seq_3\nACGa--CaCT\n");
@@ -471,7 +481,7 @@ mod tests {
                                                  >seq_2\nCCCNNNNG\n\
                                                  >seq_3\nACXQVPAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 0.0, false, &mut stdout);
+        drop_columns(&path, true, 0.0, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nAG\n\
                                                  >seq_2\nCN\n\
                                                  >seq_3\nAA\n");
@@ -484,7 +494,7 @@ mod tests {
                                                  >seq_2\nCCCNNNNG\n\
                                                  >seq_3\nACXQVPAG\n");
         let mut stdout = Vec::new();
-        drop_columns(&path, true, 1.0, false, &mut stdout);
+        drop_columns(&path, true, 1.0, None, &mut stdout);
         assert_eq!(from_utf8(&stdout).unwrap(), ">seq_1\nA\n\
                                                  >seq_2\nC\n\
                                                  >seq_3\nA\n");

@@ -52,9 +52,9 @@ Arguments:
   <INPUT>  Input alignment
 
 Options:
-  -c, --core <CORE>        Restrict to core genome (0.0 to 1.0, default = 0.0) [default: 0.0]
+  -c, --core <CORE>        Restrict to core genome (0.0 to 1.0, default = 0.0)
   -e, --exclude_invariant  Exclude invariant sites
-      --verbose            Verbose output
+  -t, --table <TABLE>      Create a table with per-site information
   -h, --help               Print help
   -V, --version            Print version
 ```
@@ -118,14 +118,14 @@ iqtree2 -s demo_core.fasta -T 4
 
 
 
-## Verbose output
+## Per-site table
 
-Using the `--verbose` option will make Core-SNP-filter print a per-site table to stderr. Save it to file like this:
+Using the `--table` option will make Core-SNP-filter write a per-site table in TSV format:
 ```bash
-coresnpfilter -e -c 0.95 --verbose core.full.aln 1> filtered.aln 2> core_snp_table.tsv
+coresnpfilter -e -c 0.95 --table core_snp_table.tsv core.full.aln > filtered.aln
 ```
 
-This is mainly for debugging purposes, so you probably don't want to use it. But if you do, the columns are:
+The table columns are:
 1. `pos`: 1-based index of the input alignment site
 2. `a`: whether any sequence at this site contains `A` or `a`
 3. `c`: whether any sequence at this site contains `C` or `c`
