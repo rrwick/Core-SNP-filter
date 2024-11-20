@@ -52,16 +52,15 @@ fn main() {
 fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bool,
                 stdout: &mut dyn io::Write) {
     let alignment_length = misc::get_first_fasta_seq_length(filename);
+    let max_width = alignment_length.to_string().len();
     let (a, c, g, t, seq_count, acgt_counts) = bitvectors_and_counts(filename, alignment_length);
     if !verbose {
-        eprintln!("Core-SNP-filter");
-        eprintln!("  input file:                    {}", filename.display());
-        eprintln!("  number of sequences:           {}", seq_count);
-        eprintln!("  input sequence length:         {}", alignment_length);
+        stderr_display_1(filename, max_width, seq_count, alignment_length);
     }
 
     let mut keep = bitvec![1; alignment_length];
-    let (mut in_a, mut in_c, mut in_g, mut in_t, mut in_other, mut non_core) = (0, 0, 0, 0, 0, 0);
+    let (mut inv_a, mut inv_c, mut inv_g, mut inv_t, mut inv_other) = (0, 0, 0, 0, 0);
+    let mut non_core = 0;
     if verbose {
         print_verbose_header();
     }
@@ -70,11 +69,11 @@ fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bo
         let frac = acgt_counts[i] as f64 / seq_count as f64;
         if exclude_invariant && !variation {
             keep.set(i, false);
-            if a[i] { in_a += 1; }
-            else if c[i] { in_c += 1; }
-            else if g[i] { in_g += 1; }
-            else if t[i] { in_t += 1; }
-            else { in_other += 1; }
+            if a[i] { inv_a += 1; }
+            else if c[i] { inv_c += 1; }
+            else if g[i] { inv_g += 1; }
+            else if t[i] { inv_t += 1; }
+            else { inv_other += 1; }
         }
         if keep[i] && frac < core {
             keep.set(i, false);
@@ -85,15 +84,12 @@ fn drop_columns(filename: &Path, exclude_invariant: bool, core: f64, verbose: bo
         }
     }
     let output_size = keep.iter().filter(|n| *n == true).count();
-    assert!(alignment_length == output_size + in_a + in_c + in_g + in_t + in_other + non_core);
+    let inv_total = inv_a + inv_c + inv_g + inv_t + inv_other;
+    let removed_total = inv_total + non_core;
+    assert!(alignment_length == output_size + removed_total);
     if !verbose {
-        eprintln!("  invariant-A sites removed:     {}", in_a);
-        eprintln!("  invariant-C sites removed:     {}", in_c);
-        eprintln!("  invariant-G sites removed:     {}", in_g);
-        eprintln!("  invariant-T sites removed:     {}", in_t);
-        eprintln!("  other invariant sites removed: {}", in_other);
-        eprintln!("  non-core sites removed:        {}", non_core);
-        eprintln!("  output sequence length:        {}", output_size);
+        stderr_display_2(max_width, output_size, removed_total, non_core, inv_total,
+                         inv_a, inv_c, inv_g, inv_t, inv_other);
     }
 
     let mut fasta_reader = misc::open_fasta_file(filename);
@@ -145,6 +141,32 @@ fn get_fasta_header(record: &RefRecord) -> String {
 fn has_variation(a: bool, c: bool, g: bool, t: bool) -> bool {
     let total = a as i32 + c as i32 + g as i32 + t as i32;
     total > 1
+}
+
+
+fn stderr_display_1(filename: &Path, max_width: usize, seq_count: usize, alignment_length: usize) {
+    eprintln!();
+    eprintln!("Core-SNP-filter");
+    eprintln!("{}", "─".repeat(max_width+37));
+    eprintln!("input file: {:>w$}", filename.display(), w = max_width+25);
+    eprintln!("number of sequences:                 {:>w$}", seq_count, w = max_width);
+    eprintln!("input sequence length:               {:>w$}", alignment_length, w = max_width);
+}
+
+
+fn stderr_display_2(max_width: usize, output_size: usize, removed_total: usize, non_core: usize,
+                    inv_total: usize, inv_a: usize, inv_c: usize, inv_g: usize, inv_t: usize,
+                    inv_other: usize) {
+    eprintln!("├ output sequence length:            {:>w$}", output_size, w = max_width);
+    eprintln!("└ total sites removed:               {:>w$}", removed_total, w = max_width);
+    eprintln!("  ├ non-core sites removed:          {:>w$}", non_core, w = max_width);
+    eprintln!("  └ invariant sites removed:         {:>w$}", inv_total, w = max_width);
+    eprintln!("    ├ invariant-A sites removed:     {:>w$}", inv_a, w = max_width);
+    eprintln!("    ├ invariant-C sites removed:     {:>w$}", inv_c, w = max_width);
+    eprintln!("    ├ invariant-G sites removed:     {:>w$}", inv_g, w = max_width);
+    eprintln!("    ├ invariant-T sites removed:     {:>w$}", inv_t, w = max_width);
+    eprintln!("    └ other invariant sites removed: {:>w$}", inv_other, w = max_width);
+    eprintln!();
 }
 
 

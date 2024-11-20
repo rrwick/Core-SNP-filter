@@ -96,16 +96,19 @@ coresnpfilter -e -c 0.95 demo.fasta.gz > demo_core.fasta
 The stderr output will look like this:
 ```
 Core-SNP-filter
-  input file:                    demo.fasta.gz
-  number of sequences:           40
-  input sequence length:         10000
-  invariant-A sites removed:     1394
-  invariant-C sites removed:     1763
-  invariant-G sites removed:     1849
-  invariant-T sites removed:     1378
-  other invariant sites removed: 322
-  non-core sites removed:        2143
-  output sequence length:        1151
+──────────────────────────────────────────
+input file:                  demo.fasta.gz
+number of sequences:                    40
+input sequence length:               10000
+├ output sequence length:             1151
+└ total sites removed:                8849
+  ├ non-core sites removed:           2143
+  └ invariant sites removed:          6706
+    ├ invariant-A sites removed:      1394
+    ├ invariant-C sites removed:      1763
+    ├ invariant-G sites removed:      1849
+    ├ invariant-T sites removed:      1378
+    └ other invariant sites removed:   322
 ```
 
 You can then build a tree with a program such as [IQ-TREE](http://www.iqtree.org):
