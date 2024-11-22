@@ -24,6 +24,8 @@ There are two main options:
 
 Core-SNP-filter outputs a FASTA alignment to stdout. The output will have the same number of sequences as the input, but (depending on the options used) the length of the sequences will likely be shorter. The header lines (names and descriptions) of the output will be the same as the input, and there will be no line breaks in the sequences (each sequence gets one line). Some basic information (input file, input sequence length, number of sequences and output sequence length) is printed to stderr.
 
+Note that Core-SNP-filter reads the input alignment multiple times during processing instead of storing it in memory. Therefore, the input alignment must be a literal file – Core-SNP-filter cannot accept input via stdin or process substitution (e.g. `<(command)` syntax).
+
 Some example commands:
 ```bash
 # Exclude invariant sites:
@@ -62,7 +64,9 @@ Options:
 
 
 
-## Installation from pre-built binaries
+## Installation
+
+### From pre-built binaries
 
 Core-SNP-filter compiles to a single executable binary (`coresnpfilter`), which makes installation easy!
 
@@ -71,8 +75,15 @@ You can find pre-built binaries for common OSs/CPUs on the [releases page](https
 Alternatively, you don't need to install Core-SNP-filter at all. Instead, just run it from wherever the `coresnpfilter` executable happens to be, like this: `/some/path/to/coresnpfilter --help`.
 
 
+### From conda
 
-## Installation from source
+Core-SNP-filter is on [Bioconda](https://anaconda.org/bioconda/core-snp-filter) for Linux and macOS (x86-64 and ARM64). You can create a conda environment and install it like this:
+```bash
+conda create -n core-snp-filter -c bioconda -c conda-forge core-snp-filter
+```
+
+
+### From source
 
 If you are using incompatible hardware or a different OS, then you'll have to build Core-SNP-filter from source. [Install Rust](https://www.rust-lang.org/tools/install) if you don't already have it. Then clone and build Core-SNP-filter like this:
 ```
@@ -85,9 +96,22 @@ You'll find the freshly built executable in `target/release/coresnpfilter`, whic
 
 
 
+## Illustrated example
+
+This toy alignment demonstrates how Core-SNP-filter processes sites with different settings. Key points:
+* The highlight sites are the ones that Core-SNP-filter will _remove_, i.e. the output will consist only of the non-highlighted sites.
+* Core-SNP-filter uses `≥` for core site assessment, e.g. with `-c 0.8`, a site with 4/5 unambiguous bases is considered core.
+* All non-`A`/`C`/`G`/`T` characters (e.g. `N` and `-`) are treated equally.
+* A site can be both invariant and non-core. When both `-e` and `-c` are used, invariant sites are filtered first, so some non-core sites may shift to the invariant category.
+
+<p align="center"><picture><source srcset="images/example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/example.png" alt="Verticall logo" width="90%"></picture></p>
+
+
+
+
 ## Demo dataset
 
-This repo's [`demo.fasta.gz`](https://raw.githubusercontent.com/rrwick/Core-SNP-filter/main/demo.fasta.gz) file is a pseudo-alignment made from 40 _Klebsiella_ samples (the original was ~5 Mbp long but I subsetted it down to 10 kbp to save space). It has many gaps, invariant sites and Ns, so Core-SNP-filter can make it a lot smaller.
+This repo's [`demo.fasta.gz`](https://raw.githubusercontent.com/rrwick/Core-SNP-filter/main/demo.fasta.gz) file is a pseudo-alignment made from 40 _Klebsiella_ samples (the original was ~5 Mbp long but I subsetted it down to 10 kbp to save space). It contains gaps, invariant sites, and `N` bases, allowing Core-SNP-filter to significantly reduce its size.
 
 For example, you can use Core-SNP-filter to create an invariant-free 95%-core alignment:
 ```bash
@@ -123,9 +147,9 @@ iqtree2 -s demo_core.fasta -T 4
 
 Using the `-C`/`--invariant_counts` option will make Core-SNP-filter print comma-delimited `a`/`c`/`g`/`t` invariant-site counts to stdout. This behaves the same as `snp-sites -C`. These counts can then be given to IQ-TREE via its `-fconst` option:
 ```bash
-coresnpfilter -e -c 0.95 demo.fasta.gz > demo_core.fasta
-counts=$(coresnpfilter -C demo.fasta.gz)
-iqtree2 -s demo_core.fasta -T 4 -fconst "$counts"
+coresnpfilter -e -c 0.95 core.full.aln > filtered.aln
+counts=$(coresnpfilter -C core.full.aln)
+iqtree2 -s filtered.aln -T 4 -fconst "$counts"
 ```
 
 When the `-C`/`--invariant_counts` option is used, no other options are allowed.
