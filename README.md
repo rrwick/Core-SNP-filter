@@ -6,7 +6,7 @@ This is a tool to filter sites (i.e. columns) in a FASTA-format whole-genome pse
 * Whether the site contains variation or not.
 * How conserved the site is, i.e. contains an unambiguous base in a sufficient fraction of the sequences.
 
-I wrote Core-SNP-filter because I was using [Snippy](https://github.com/tseemann/snippy), and the `snippy-core` command produces a `core.full.aln` file (contains all sites regardless of variation and conservation) and `core.aln` (only contains invariant sites with 100% conservation). I wanted a tool that could produce a core SNP alignment, but with more flexibility, e.g. including sites with ≥95% conservation.
+I wrote Core-SNP-filter because I was using [Snippy](https://github.com/tseemann/snippy), and the `snippy-core` command produces a `core.full.aln` file (contains all sites regardless of variation and conservation) and `core.aln` (only contains variant sites with 100% conservation). I wanted a tool that could produce a core SNP alignment, but with more flexibility, e.g. including sites with ≥95% conservation.
 
 Core-SNP-filter is efficient. On a small input alignment (2 Mbp in length, 100 sequences), it runs in seconds. On a large input alignment (5 Mbp in length, 5000 sequences, 25 GB file size), it takes less than 10 minutes and only uses ~50 MB of RAM. See [this benchmark](https://github.com/mtaouk/Core-SNP-filter-methods/tree/main/benchmarking) for more details.
 
