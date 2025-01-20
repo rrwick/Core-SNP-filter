@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the associated research article listed below."
+title: "Core-SNP-filter"
+authors:
+  - family-names: "Wick"
+    given-names: "Ryan R"
+    orcid: "https://orcid.org/0000-0001-8349-0778"
+url: "https://github.com/rrwick/Core-SNP-filter"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Taouk"
+      given-names: "Mona L"
+    - family-names: "Featherstone"
+      given-names: "Leo A"
+    - family-names: "Taiaroa"
+      given-names: "George"
+    - family-names: "Seemann"
+      given-names: "Torsten"
+    - family-names: "Ingle"
+      given-names: "Danielle J"
+    - family-names: "Stinear"
+      given-names: "Timothy P"
+    - family-names: "Wick"
+      given-names: "Ryan R"
+      orcid: "https://orcid.org/0000-0001-8349-0778"
+  title: "Exploring SNP filtering strategies: the influence of strict vs soft core"
+  journal: "Microbial Genomics"
+  volume: 11
+  year: 2025
+  month: 1
+  doi: "10.1099/mgen.0.001346"
