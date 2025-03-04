@@ -1,4 +1,4 @@
-# Core-SNP-filter
+<p align="center"><picture><source srcset="images/logo-dark.png" media="(prefers-color-scheme: dark)"><img src="images/logo.png" alt="Core-SNP-filter logo" width="40%"></picture></p>
 
 [![License GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html) ![Rust](https://github.com/rrwick/Core-SNP-filter/actions/workflows/rust.yml/badge.svg)
 
