@@ -2,7 +2,7 @@
 
 [![License GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html) ![Rust](https://github.com/rrwick/Core-SNP-filter/actions/workflows/rust.yml/badge.svg)
 
-This is a tool to filter sites (i.e. columns) in a FASTA-format whole-genome pseudo-alignment based on:
+Core-SNP-filter is a tool to filter sites (i.e. columns) in a FASTA-format whole-genome pseudo-alignment based on:
 * Whether the site contains variation or not.
 * How conserved the site is, i.e. contains an unambiguous base in a sufficient fraction of the sequences.
 
@@ -61,6 +61,8 @@ Options:
   -h, --help               Print help
   -V, --version            Print version
 ```
+
+To run Core-SNP-filter via a web portal (instead of the command line), visit the [Centre for Pathogen Genomics Bioinformatics Analysis Portal](https://portal.cpg.unimelb.edu.au).
 
 
 
